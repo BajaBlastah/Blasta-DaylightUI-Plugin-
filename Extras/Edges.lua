@@ -75,14 +75,8 @@ function Edges.Clear(frame)
     shapes[frame] = nil
 end
 
-function Edges.ReverseFillMask(bar, side)
-    local mask = Style.GetFillMask(bar)
-    if mask then mask:SetTexture(reversedTexture(side, false, false), "CLAMP", "CLAMP") end
-end
-
 function Edges.Fill(bar, side, cut, direction)
-    Style.AngleFill(bar, direction ~= "straight" and side or nil, cut)
-    if direction == "bottom" and side and cut > 0 then Edges.ReverseFillMask(bar, side) end
+    Style.AngleFill(bar, direction ~= "straight" and side or nil, cut, direction == "bottom" or nil)
 end
 
 function Edges.Contour(frame, shape, width, height)

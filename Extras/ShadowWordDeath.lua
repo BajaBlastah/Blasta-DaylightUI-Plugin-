@@ -80,26 +80,6 @@ end
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 
--- The health bar's angled moving edge (Style.AngleFill), so the marker leans with
--- it on a slanted frame. A reversed slant (Blasta's "Reverse unit frame slant",
--- Edges.ReverseFillMask) leans the other way; that's noted on the fill's mask.
-local flipped = setmetatable({}, { __mode = "k" }) -- fill mask -> true when reversed
-if style.GetFillMask and type(style.AngleFill) == "function" then
-    local angleFill = style.AngleFill
-    function style.AngleFill(bar, ...)
-        local m = style.GetFillMask(bar)
-        if m then flipped[m] = nil end
-        return angleFill(bar, ...)
-    end
-    local Edges = extras.Edges
-    if Edges and type(Edges.ReverseFillMask) == "function" then
-        hooksecurefunc(Edges, "ReverseFillMask", function(bar)
-            local m = style.GetFillMask(bar)
-            if m then flipped[m] = true end
-        end)
-    end
-end
-
 -- How far the top and the bottom of the edge sit from its straight line, in the
 -- bar's units: one of them 0, the other the cut toward the bar's start.
 local function lean(bar, growLeft)
@@ -107,8 +87,7 @@ local function lean(bar, growLeft)
     local cut = m and m.added and type(m.cut) == "number" and m.cut > 0 and m.cut or 0
     if cut == 0 then return 0, 0 end
     local back = growLeft and cut or -cut
-    local under = (m.under == true) ~= (flipped[m] == true)
-    if under then return back, 0 end
+    if m.under == true then return back, 0 end
     return 0, back
 end
 

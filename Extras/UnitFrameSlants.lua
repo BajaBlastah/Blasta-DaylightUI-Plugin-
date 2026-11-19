@@ -4,7 +4,7 @@ local ns = extras.Compatible("UnitFrames")
 local UF = ns and ns.UF
 if not (UF and UF.Layout and UF.LayoutPrediction) then return end
 
-local Style, Edges = DUI.Style, extras.Edges
+local Style = DUI.Style
 local mod = DUI:GetModule("UnitFrames")
 for _, unit in ipairs({ "player", "target", "targettarget", "focus", "pet", "party", "partyPet", "raid", "arena" }) do
     local cfg = mod.defaults[unit]
@@ -58,7 +58,8 @@ function Style.Slant(frame, side, cut, ref, under)
             -- Attached bars can continue from there without protruding.
             flat[frame] = true
             return slant(frame, nil, 0)
-        elseif not ref and reversed[frame] and (side == "left" or side == "right") then
+        elseif not ref and reversed[frame] then
+            -- "both" leans both ends under: the trapezoid turned upside down.
             return slant(frame, side, cut, nil, side)
         end
     end
@@ -66,16 +67,12 @@ function Style.Slant(frame, side, cut, ref, under)
 end
 
 local angleFill = Style.AngleFill
-function Style.AngleFill(bar, side, cut)
+function Style.AngleFill(bar, side, cut, under)
     if side and cut and cut > 0 then
         if flat[bar:GetParent()] then return angleFill(bar, nil, 0) end
-        if reversed[bar] then
-            angleFill(bar, side, cut)
-            Edges.ReverseFillMask(bar, side)
-            return
-        end
+        if reversed[bar] then return angleFill(bar, side, cut, true) end
     end
-    return angleFill(bar, side, cut)
+    return angleFill(bar, side, cut, under)
 end
 
 hooksecurefunc(UF, "LayoutPrediction", function(frame, side)
