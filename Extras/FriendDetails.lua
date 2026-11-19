@@ -16,3 +16,5 @@ function friends.Sub(friend, ...)
     if details == "" then return subtitle end
     return subtitle ~= "" and (details .. " · " .. subtitle) or details
 end
+
+extras.Loaded("FriendDetails")

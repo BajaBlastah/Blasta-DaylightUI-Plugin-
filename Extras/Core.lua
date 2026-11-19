@@ -17,6 +17,11 @@ extras.German = setmetatable({}, {
     end,
 })
 
+-- Blasta's parts mark themselves when they loaded all the way (Compat.lua).
+local loaded = {}
+function extras.Loaded(name) loaded[name] = true end
+function extras.IsLoaded(name) return loaded[name] == true end
+
 function extras.Translate(key)
     if extras.Language == "deDE" then
         return extras.German[key] or (clientGerman and rawget(DUI.L, key)) or key
@@ -70,6 +75,33 @@ local function menuText(value)
         DUI.L[key] = extras.Translate(value)
     end
     return key
+end
+
+-- Search: DaylightUI matches the stored text and its translation. Blasta's
+-- stored text is a scoped key ("DaylightBlasta:menu:..."), so every search
+-- for "menu" or "blasta" found every Blasta row. Blasta's rows match their
+-- English text and the language Blasta shows instead.
+if options and options.Matches then
+    local matches = options.Matches
+    local PREFIX = "DaylightBlasta:menu:"
+    local function scoped(v) return type(v) == "string" and v:sub(1, #PREFIX) == PREFIX end
+    local function has(v, query)
+        if type(v) ~= "string" then return false end
+        local english = menuKeys[v] or v
+        if english:lower():find(query, 1, true) then return true end
+        local shown = DUI.L[v]
+        return type(shown) == "string" and shown ~= v and shown:lower():find(query, 1, true) ~= nil
+    end
+    function options.Matches(group, item, query)
+        if not (scoped(item.label) or scoped(item.desc) or scoped(group and group.label)) then
+            return matches(group, item, query)
+        end
+        if query == nil or query == "" then return true end
+        if item.type == "text" or item.type == "custom" or item.noSearch then return false end
+        query = query:lower()
+        return has(item.label, query) or has(item.desc, query) or has(item.text, query)
+            or has(group and group.label, query)
+    end
 end
 
 -- SavedVariables may be populated after the Lua files have been read.
@@ -252,7 +284,7 @@ login:SetScript("OnEvent", function(self, _, initialLogin, reloadingUI)
     if not (initialLogin or reloadingUI) then return end
     self:UnregisterEvent("PLAYER_ENTERING_WORLD")
     if loginMessageEnabled() then
-        local title = ("Daylight Blasta: Version %s"):format(version or "?")
+        local title = ("Blasta (DaylightUI Plugin): Version %s"):format(version or "?")
         local greeting = extras.Translate("Thanks for playing! Menu via /blasta.")
         DEFAULT_CHAT_FRAME:AddMessage(extras.BlastaGradient(title .. " – " .. greeting, loginColors))
     end
@@ -305,6 +337,16 @@ function extras.GeneralPage()
         } }
     end
     return page
+end
+
+-- Outline flags for Blasta's own SetFont calls. DaylightUI 1.9.5 draws its
+-- outlined text with the game's slug renderer (Style.Slug); Blasta's text
+-- follows so both look equally crisp. Older DaylightUI: flags unchanged.
+function extras.Outline(flags)
+    local slug = DUI.Style and DUI.Style.Slug
+    if type(slug) ~= "function" then return flags end
+    local ok, out = pcall(slug, flags)
+    return ok and type(out) == "string" and out or flags
 end
 
 -- Each integration checks the methods and tables it needs before hooking them.

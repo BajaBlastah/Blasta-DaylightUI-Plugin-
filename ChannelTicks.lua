@@ -139,3 +139,5 @@ if cast and type(cast.Update) == "function" and addOption(plates, "cast", "Cast 
         end
     end
 end
+
+blasta.Loaded("ChannelTicks")

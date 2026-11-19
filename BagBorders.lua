@@ -68,7 +68,7 @@ local function questMark(button)
         mark.edges[i] = edge
     end
     mark.bang = mark:CreateFontString(nil, "OVERLAY")
-    mark.bang:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE")
+    mark.bang:SetFont(STANDARD_TEXT_FONT, 14, blasta.Outline("OUTLINE"))
     mark.bang:SetText("!")
     mark.bang:SetTextColor(QUEST_COLOR[1], QUEST_COLOR[2], QUEST_COLOR[3], 1)
     questMarks[button] = mark
@@ -122,7 +122,7 @@ local function paintQuest(button)
     local size = math.max(10, math.floor((button:GetHeight() or 37) * 0.42 + 0.5))
     if mark.size ~= size then
         mark.size = size
-        mark.bang:SetFont(STANDARD_TEXT_FONT, size, "OUTLINE")
+        mark.bang:SetFont(STANDARD_TEXT_FONT, size, blasta.Outline("OUTLINE"))
     end
     mark.bang:SetShown(starts and true or false)
     mark:Show()
@@ -164,3 +164,5 @@ function module.OnEnable(mod, ...)
     end
     return enable(mod, ...)
 end
+
+blasta.Loaded("BagBorders")

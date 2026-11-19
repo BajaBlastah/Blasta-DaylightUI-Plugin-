@@ -230,3 +230,5 @@ extras.AddSetting(bagModule, "combineStacks", {
     get = function() return DUI:Get(ADDON, filterSetting) ~= false end, default = function() return true end,
     disabled = function() return not enabled() end,
     set = function(value) return DUI:Set(ADDON, filterSetting, value) end }, true)
+
+extras.Loaded("BagsOrganize")

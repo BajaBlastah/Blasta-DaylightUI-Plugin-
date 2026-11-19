@@ -335,3 +335,5 @@ DUI.On("SettingChanged", function(scope, path)
     if path == "motion" or (scope == "Nameplates" and (path == key or type(path) == "string"
         and path:find(key .. "_", 1, true) == 1)) then sync() end
 end)
+
+extras.Loaded("NameplateAuraMotion")

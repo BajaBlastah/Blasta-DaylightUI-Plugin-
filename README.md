@@ -1,5 +1,5 @@
-# DaylightUI-Blasta
-A quality-of-life plugin for DaylightUI in World of Warcraft.
+# Blasta (DaylightUI Plugin)
+A quality-of-life plugin for DaylightUI in World of Warcraft. Blasta is not part of DaylightUI itself: please report Blasta bugs here, not to the DaylightUI team.
 
 
 ## Contributions

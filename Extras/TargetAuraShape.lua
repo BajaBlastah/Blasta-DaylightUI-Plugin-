@@ -404,3 +404,5 @@ DUI.On("Login", function()
     end
     db.blastaSquareMigrated = true
 end)
+
+extras.Loaded("TargetAuraShape")

@@ -228,3 +228,5 @@ function spells.Render(page)
         page.note:SetText(extras.Translate("No spells missing from action bars."))
     end
 end
+
+extras.Loaded("Spellbook")

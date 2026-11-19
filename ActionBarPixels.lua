@@ -117,3 +117,5 @@ DUI.On("StyleChanged", function()
         end
     end, "daylight-addon-skins:pixel-grid")
 end)
+
+blasta.Loaded("ActionBarPixels")

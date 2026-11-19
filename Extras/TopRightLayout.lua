@@ -291,3 +291,5 @@ function extras.PlayerAuraLayoutPage()
     return extras.ShowDaylightRequirements({ id = "playerAuraLayout", label = "Player buffs and debuffs",
         groups = groups }, module)
 end
+
+extras.Loaded("TopRightLayout")

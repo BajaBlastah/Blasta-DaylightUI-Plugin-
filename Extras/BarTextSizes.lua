@@ -133,3 +133,5 @@ hooksecurefunc(cast, "Layout", function(bar, cfg)
         end
     end
 end)
+
+extras.Loaded("BarTextSizes")

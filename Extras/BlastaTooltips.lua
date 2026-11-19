@@ -54,6 +54,12 @@ extras.German["Item"] = "Gegenstand"
 extras.German["Item comparison"] = "Vergleich"
 extras.German["Your item"] = "Dein Gegenstand"
 extras.German["Spell"] = "Zauber"
+extras.German["Buff"] = "Buff"
+extras.German["Player"] = "Spieler"
+extras.German["Enemy"] = "Gegner"
+extras.German["Quest"] = "Quest"
+extras.German["Recipe"] = "Rezept"
+extras.German["Quest item"] = "Questgegenstand"
 extras.German["Unit"] = "Einheit"
 
 defaults.blastaGradient = "daylight"
@@ -124,7 +130,7 @@ extras.TooltipCards = {
     } },
 }
 
--- Puts the cards after DaylightUI's "Look" card and the live preview on top.
+-- Hands the cards to DaylightUI's Tooltips page for a moment, so they read and save in its settings.
 function extras.PlaceTooltipCards()
     local page
     for _, candidate in ipairs(mod.options and mod.options.pages or {}) do
@@ -136,9 +142,12 @@ function extras.PlaceTooltipCards()
     for i, group in ipairs(page.groups) do
         if group.label == "Look" then at = i + 1 end
     end
-    for i, group in ipairs(extras.TooltipCards) do table.insert(page.groups, at + i - 1, group) end
-    if page.sample == nil and extras.TooltipSample then
-        page.sample = function(parent) return extras.TooltipSample(parent) end
+    -- They go on Blasta's Tooltips page from there (extras.CollectSettings),
+    -- with the live preview on top.
+    local sample = extras.TooltipSample and function(parent) return extras.TooltipSample(parent) end
+    for i, group in ipairs(extras.TooltipCards) do
+        group.blastaSample = sample
+        table.insert(page.groups, at + i - 1, group)
     end
     return extras.TooltipCards
 end
@@ -1633,6 +1642,13 @@ DUI.On("Login", function()
 end)
 
 local GREEN, GOLD, GREY = { 0.12, 1, 0.12 }, { 1, 0.82, 0.25 }, { 0.62, 0.64, 0.68 }
+-- A sample line with extra fields (small print, a progress bar).
+local function row5(text, section, color, right, fields)
+    local row = line(text, section, color, right)
+    for k, v in pairs(fields or {}) do row[k] = v end
+    return row
+end
+
 local function sample(kind, second)
     local german = extras.Language == "deDE"
     local function t(de, en) return german and de or en end
@@ -1645,6 +1661,49 @@ local function sample(kind, second)
                 { value = t("40 m", "40 yd"), label = sampleText("Range") },
             },
             lines = { line(sampleText("Blasta sample spell description"), "effects") } }
+    elseif kind == "aura" then
+        -- A buff: its dispel type as the caption, time left and who cast it.
+        return { kind = "Aura", title = t("Inneres Feuer", "Inner Fire"), subtitle = t("Buff · Magie", "Buff · Magic"),
+            rank = t("Magie", "Magic"), icon = 135926, color = { 0.2, 0.6, 1 },
+            lines = { row5(t("Erhöht die Rüstung um 315. Die nächsten 20 Angriffe gegen euch verursachen Schaden.",
+                    "Increases armor by 315. The next 20 attacks against you deal damage."), "effects"),
+                row5(t("Verbleibend: 28 Min.", "Time remaining: 28 min"), "values"),
+                row5(t("Von: Baja Blasta", "From: Baja Blasta"), "footer", GREY, nil, { small = true }) } }
+    elseif kind == "player" then
+        -- Another player: class color, guild, faction, PvP and their target.
+        return { kind = "Unit", title = sampleText("Blasta sample player"), subtitle = sampleText("Blasta sample player details"),
+            color = { 1, 1, 1 }, health = 0.82,
+            lines = { row5(t("<Die Morgenröte>", "<The Daybreak>"), "values", { 0.25, 1, 0.25 }),
+                row5(t("Horde · PvP", "Horde · PvP"), "values", { 0.85, 0.3, 0.3 }),
+                row5(sampleText("Health"), "values", nil, "82%"),
+                row5(t("Ziel: ", "Target: ") .. coloredText(t("Du", "You"), { 1, 0.82, 0 }), "footer") } }
+    elseif kind == "quest" then
+        -- A quest: zone, objectives with their progress, reward money.
+        return { kind = "Quest", title = sampleText("Blasta sample quest"), subtitle = t("Stufe 26 · Steinkrallengebirge", "Level 26 · Stonetalon Mountains"),
+            icon = 134328, color = { 1, 0.82, 0 },
+            lines = { row5(t("Sammelt Pyrophore aus den Elementaren am Ufer und bringt sie zurück.",
+                    "Collect pyrophores from the elementals at the shore and bring them back."), "effects"),
+                row5(sampleText("Blasta sample objective"), "values", nil, "6/10", { bar = 0.6 }),
+                row5(t("Getötete Steinwüter", "Stone ragers killed"), "values", nil, "8/8", { bar = 1 }),
+                row5(t("Belohnung", "Reward"), "price", nil, DUI.MoneyString and DUI.MoneyString(3500) or "35s") } }
+    elseif kind == "recipe" then
+        -- A recipe: the skill it needs, what it makes, the reagents.
+        return { kind = "Item", icon = 134939, color = { 0.12, 1, 0 },
+            title = t("Muster: Grünes Leinenhemd", "Pattern: Green Linen Shirt"), subtitle = t("Rezept · Schneiderei", "Recipe · Tailoring"),
+            requirement = t("Benötigt Schneiderei (40)", "Requires Tailoring (40)"),
+            lines = { row5(t("Benutzen: Lehrt Euch, wie man ein Grünes Leinenhemd herstellt.", "Use: Teaches you how to sew a Green Linen Shirt."), "effects", GREEN),
+                row5(t("Grünes Leinenhemd", "Green Linen Shirt"), "values"),
+                row5(t("Benötigt: Leinenstoff (3), Grobes Garn, Grüner Farbstoff", "Requires: Linen Cloth (3), Coarse Thread, Green Dye"), "values",
+                    { 0.70, 0.72, 0.76 }, nil, { small = true }),
+                row5(sampleText("Sell price"), "price", nil, DUI.MoneyString and DUI.MoneyString(50) or "50c") } }
+    elseif kind == "questItem" then
+        -- A quest item: it starts a quest, and has no price.
+        return { kind = "Item", icon = 133470, color = { 0.88, 0.90, 0.93 },
+            title = t("Eingerissene Schatzkarte", "Torn Treasure Map"), subtitle = t("Questgegenstand", "Quest Item"),
+            binding = sampleText("Binds when picked up"),
+            lines = { row5(t("Dieser Gegenstand startet eine Quest", "This Item Begins a Quest"), "effects", GOLD),
+                row5(t("Benötigt für", "Needed for"), "footer", GOLD, t("1 Quest", "1 quest")),
+                row5(t("Quelle", "Source"), "origin", GOLD, t("Defias-Bandit", "Defias Bandit")) } }
     elseif kind == "enemy" then
         return { title = sampleText("Blasta sample enemy"), subtitle = sampleText("Blasta sample enemy details"),
             color = { 0.93, 0.45, 0.33 }, health = 1,
@@ -1696,8 +1755,15 @@ local function sizeKeyOf(line)
 end
 
 local GAP, CHIPS, CHIP_ROW = 12, 470, 30   -- between two tooltips; room the view chips take
+-- The kinds the preview shows. Clicking "Item" again while it's showing
+-- goes through the item kinds: an ordinary item, a recipe, a quest item.
 local VIEWS = { { key = "item", label = "Item" }, { key = "mine", label = "Your item" },
-    { key = "compare", label = "Item comparison" }, { key = "spell", label = "Spell" }, { key = "enemy", label = "Unit" } }
+    { key = "spell", label = "Spell" }, { key = "aura", label = "Buff" }, { key = "player", label = "Player" },
+    { key = "enemy", label = "Enemy" }, { key = "quest", label = "Quest" } }
+local ITEM_KINDS = { { key = "item", label = "Item" }, { key = "recipe", label = "Recipe" }, { key = "questItem", label = "Quest item" } }
+local KNOWN_VIEW = {}
+for _, v in ipairs(VIEWS) do KNOWN_VIEW[v.key] = true end
+local itemKind = 1   -- which of ITEM_KINDS, kept for the session
 local ZOOM_MIN, ZOOM_MAX, ZOOM_STEP = 0.6, 1.6, 0.1
 local zoom = 1   -- the strip's Zoom, kept for the session
 
@@ -1706,10 +1772,10 @@ local zoom = 1   -- the strip's Zoom, kept for the session
 -- Weapon first, then chest, head, off hand and shoulders.
 local MY_SLOTS = { 16, 5, 1, 17, 3 }
 local scanTip
-local function myItem()
+local function myItem(slots)
     if not (CreateFrame and GetInventoryItemLink) then return end
     scanTip = scanTip or CreateFrame("GameTooltip", "BlastaPreviewScanTooltip", UIParent, "GameTooltipTemplate")
-    for _, slot in ipairs(MY_SLOTS) do
+    for _, slot in ipairs(slots or MY_SLOTS) do
         if GetInventoryItemLink("player", slot) then
             scanTip:SetOwner(UIParent, "ANCHOR_NONE")
             scanTip:SetInventoryItem("player", slot)
@@ -1723,6 +1789,120 @@ local function myItem()
             if ok and model then return model end
         end
     end
+end
+
+-- The other views read real tooltips too, through the same hidden tooltip,
+-- so the preview shows exactly what Blasta draws in the game: something from
+-- your bags, a spell from your bars, one of your buffs, yourself, your
+-- target, a quest from your log. Only when there's nothing of that kind (no
+-- buff, no hostile target) does the made-up sample stand in.
+local function scan(set, info)
+    if not CreateFrame then return end
+    scanTip = scanTip or CreateFrame("GameTooltip", "BlastaPreviewScanTooltip", UIParent, "GameTooltipTemplate")
+    scanTip:SetOwner(UIParent, "ANCHOR_NONE")
+    local shown = pcall(set, scanTip)
+    local data = shown and scanTip.GetPrimaryTooltipData and scanTip:GetPrimaryTooltipData()
+    if type(data) ~= "table" and info then
+        local ok, got = pcall(info)
+        if ok then data = got end
+    end
+    local ok, model = false, nil
+    if shown and type(data) == "table" and plain(scanTip:NumLines()) then ok, model = pcall(modelFor, scanTip, data) end
+    scanTip:Hide()
+    if ok and model then return model end
+end
+
+-- Bag items by kind: equipment (the best quality first), recipes (class 9),
+-- quest items (class 12).
+local function bagItem(want)
+    local container = C_Container
+    if not (container and container.GetContainerNumSlots and C_Item and C_Item.GetItemInfoInstant) then return end
+    local best, bestBag, bestSlot = -1, nil, nil
+    for bag = 0, 4 do
+        for slot = 1, container.GetContainerNumSlots(bag) or 0 do
+            local info = container.GetContainerItemInfo(bag, slot)
+            local link = type(info) == "table" and plain(info.hyperlink)
+            if type(link) == "string" then
+                local _, _, _, equipLoc, _, classID = C_Item.GetItemInfoInstant(link)
+                local quality = plain(info.quality) or 0
+                local match = (want == "recipe" and classID == 9) or (want == "questItem" and classID == 12)
+                    or (want == "item" and type(equipLoc) == "string" and equipLoc ~= "" and equipLoc ~= "INVTYPE_BAG")
+                if match and quality > best then best, bestBag, bestSlot = quality, bag, slot end
+            end
+        end
+    end
+    if bestBag then
+        return scan(function(t) t:SetBagItem(bestBag, bestSlot) end,
+            C_TooltipInfo and C_TooltipInfo.GetBagItem and function() return C_TooltipInfo.GetBagItem(bestBag, bestSlot) end)
+    end
+end
+
+-- A spell on your action bars, else your interrupt.
+local function barSpell()
+    for slot = 1, 72 do
+        local kind, id = GetActionInfo and GetActionInfo(slot)
+        if kind == "spell" and type(id) == "number" then
+            local model = scan(function(t) t:SetSpellByID(id) end,
+                C_TooltipInfo and C_TooltipInfo.GetSpellByID and function() return C_TooltipInfo.GetSpellByID(id) end)
+            if model then return model end
+        end
+    end
+    local id = DUI.Interrupt and DUI.Interrupt.Spell and DUI.Interrupt.Spell()
+    if id then return scan(function(t) t:SetSpellByID(id) end) end
+end
+
+local function myBuff()
+    for i = 1, 40 do
+        local model = scan(function(t) t:SetUnitBuff("player", i) end,
+            C_TooltipInfo and C_TooltipInfo.GetUnitBuff and function() return C_TooltipInfo.GetUnitBuff("player", i) end)
+        if model then return model end
+        if not (C_UnitAuras and C_UnitAuras.GetBuffDataByIndex) then break end
+        local ok, aura = pcall(C_UnitAuras.GetBuffDataByIndex, "player", i)
+        if not ok or aura == nil then break end
+    end
+end
+
+local function unitModel(unit)
+    if not (UnitExists and UnitExists(unit)) then return end
+    return scan(function(t) t:SetUnit(unit) end,
+        C_TooltipInfo and C_TooltipInfo.GetUnit and function() return C_TooltipInfo.GetUnit(unit) end)
+end
+
+local function hostileTarget()
+    local ok, attack = pcall(UnitCanAttack, "player", "target")
+    if ok and not (issecretvalue and issecretvalue(attack)) and attack then return unitModel("target") end
+end
+
+local function logQuest()
+    local log = C_QuestLog
+    if not (log and log.GetNumQuestLogEntries and log.GetInfo) then return end
+    for i = 1, log.GetNumQuestLogEntries() or 0 do
+        local info = log.GetInfo(i)
+        local id = type(info) == "table" and not info.isHeader and plain(info.questID)
+        if type(id) == "number" and id > 0 then
+            local model = scan(function(t) t:SetHyperlink("quest:" .. id) end)
+            if model then
+                model.kind = "Quest"
+                return model
+            end
+        end
+    end
+end
+
+local REAL = {
+    item = function() return bagItem("item") end,
+    recipe = function() return bagItem("recipe") end,
+    questItem = function() return bagItem("questItem") end,
+    mine = function() return myItem() end,
+    spell = barSpell, aura = myBuff, player = function() return unitModel("player") end,
+    enemy = hostileTarget, quest = logQuest,
+}
+local function previewModel(kind)
+    local real = REAL[kind]
+    local ok, model = false, nil
+    if real then ok, model = pcall(real) end
+    if ok and model then return model end
+    return sample(kind == "mine" and "item" or kind)
 end
 
 -- The live preview on DaylightUI's Tooltips page. It redraws with every
@@ -1771,7 +1951,7 @@ function extras.TooltipSample(parent)
     if parent.HookScript then parent:HookScript("OnSizeChanged", follow) end
     if window and window.HookScript then window:HookScript("OnSizeChanged", follow) end
     local view = config().blastaPreview
-    if view ~= "compare" and view ~= "spell" and view ~= "enemy" and view ~= "mine" then view = "item" end
+    if not KNOWN_VIEW[view] then view = "item" end
     local scale = 1
     local T = extras.Translate
     -- DaylightUI outlines a text by its string width, which for a wrapped
@@ -1822,11 +2002,15 @@ function extras.TooltipSample(parent)
             -- they read left to right in VIEWS' order.
             for i = #VIEWS, 1, -1 do
                 local v = VIEWS[i]
-                out[#out + 1] = { key = v.key, label = T(v.label), on = v.key == view }
+                local label = v.key == "item" and ITEM_KINDS[itemKind].label or v.label
+                out[#out + 1] = { key = v.key, label = T(label), on = v.key == view }
             end
             return out
         end,
-        SetView = function(key) view = key end,
+        SetView = function(key)
+            if key == "item" and view == "item" then itemKind = itemKind % #ITEM_KINDS + 1 end
+            view = key
+        end,
         Zoom = function() return zoom end,
         SetZoom = function(v)
             v = tonumber(v) or 1
@@ -1847,12 +2031,12 @@ function extras.TooltipSample(parent)
             end
             host:Show()
             host:SetScale(1)
-            local compare = view == "compare" and width >= 460
-            local maxWidth = compare and (width - 24) / 2 or width - 24
-            render(first, view == "mine" and myItem() or sample(view == "mine" and "item" or view), maxWidth)
-            second:SetShown(compare)
-            if compare then render(second, sample(view, true), maxWidth) end
-            local natural = math.max(first:GetHeight(), compare and second:GetHeight() or 0)
+            local kind = view == "item" and ITEM_KINDS[itemKind].key or view
+            -- Laid out exactly like in the game (no narrower width), then
+            -- scaled down to fit below if it's too wide.
+            render(first, previewModel(kind))
+            second:Hide()
+            local natural, span = first:GetHeight(), first:GetWidth()
             -- A little taller than DaylightUI's usual strip is fine for a
             -- tooltip; past that it shrinks, never below 85 %.
             local windowHeight = window and window.GetHeight and tonumber(window:GetHeight()) or 0
@@ -1860,7 +2044,6 @@ function extras.TooltipSample(parent)
             -- The strip's Zoom then makes it smaller or larger from there.
             scale = (natural > fit and math.max(0.6, fit / natural) or 1) * zoom
             host:SetScale(scale)
-            local span = first:GetWidth() + (compare and second:GetWidth() + GAP or 0)
             -- Never wider than the strip either.
             if span * scale > width then scale = math.max(0.4, width / span) end
             host:SetScale(scale)
@@ -1877,13 +2060,11 @@ function extras.TooltipSample(parent)
             host:SetSize(inner, natural + top)
             first:ClearAllPoints()
             first:SetPoint("TOPLEFT", host, "TOPLEFT", x, -top)
-            if compare then
-                second:ClearAllPoints()
-                second:SetPoint("TOPLEFT", first, "TOPRIGHT", GAP, 0)
-            end
             natural = natural + top
             settle(natural * scale)
             return natural * scale
         end,
     }
 end
+
+extras.Loaded("BlastaTooltips")

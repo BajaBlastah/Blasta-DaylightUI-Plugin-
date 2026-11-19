@@ -192,3 +192,5 @@ DUI.On("SettingChanged", function(scope, key)
         DUI.AfterCombat(bars.Relayout, "daylight-addon-skins:action-bar-slants")
     end
 end)
+
+extras.Loaded("ActionBarSlants")

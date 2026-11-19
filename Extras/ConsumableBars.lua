@@ -416,3 +416,5 @@ function extras.ConsumableBarsGroup()
         slider("timeY", "Timer up / down", -30, 30),
     } }
 end
+
+extras.Loaded("ConsumableBars")

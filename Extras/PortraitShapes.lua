@@ -133,3 +133,5 @@ hooksecurefunc(UF, "LayoutPortrait", function(frame, cfg)
     frame.ringFile, frame.ringLitFile = band .. ".png", band .. "-lit.png"
     UF.PaintRing(frame)
 end)
+
+extras.Loaded("PortraitShapes")

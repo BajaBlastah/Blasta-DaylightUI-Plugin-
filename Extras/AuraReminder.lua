@@ -94,7 +94,7 @@ end
 
 local KEY_BUTTON = "DaylightBlastaAuraReminderKey"
 local CAST_REMINDER = "Cast the next missing buff"
-_G.BINDING_HEADER_DAYLIGHTBLASTA = "Daylight Blasta"
+_G.BINDING_HEADER_DAYLIGHTBLASTA = "Blasta (DaylightUI Plugin)"
 _G["BINDING_NAME_CLICK " .. KEY_BUTTON .. ":LeftButton"] = L(CAST_REMINDER)
 
 local host, secure, keyButton
@@ -808,7 +808,7 @@ function extras.AuraReminderPage()
         { label = "Aura reminders", desc = "Missing buffs appear as clickable icons outside combat. The reminders hide when combat starts.", items = {
             { type = "toggle", key = ROOT .. ".enabled", label = "Show aura reminders" },
             { type = "button", label = CAST_REMINDER, text = "Key Bindings", blastaSince = "1.5",
-                desc = "Bind this under Daylight Blasta in WoW's Key Bindings. Each press uses one missing buff outside combat.",
+                desc = "Bind this under Blasta (DaylightUI Plugin) in WoW's Key Bindings. Each press uses one missing buff outside combat.",
                 func = function()
                     if Settings and Settings.OpenToCategory then Settings.OpenToCategory(Settings.KEYBINDINGS_CATEGORY_ID) end
                 end },

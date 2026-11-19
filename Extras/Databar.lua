@@ -287,3 +287,5 @@ function extras.DataTextColorPage()
     end
     return extras.ShowDaylightRequirements({ id = "dataTextColors", label = "Data text colors", groups = { group, money } }, mod)
 end
+
+extras.Loaded("Databar")

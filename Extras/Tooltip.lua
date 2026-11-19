@@ -43,3 +43,5 @@ function Tip.Refresh(module, ...)
     for tip in pairs(seen) do applyBorder(tip) end
 end
 hooksecurefunc(Tip, "Skin", applyBorder)
+
+extras.Loaded("Tooltip")

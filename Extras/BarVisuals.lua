@@ -248,3 +248,5 @@ if swingSupported then
         end
     end)
 end
+
+extras.Loaded("BarVisuals")

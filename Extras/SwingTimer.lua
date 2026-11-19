@@ -143,3 +143,5 @@ hooksecurefunc(swing, "Layout", function(holder, cfg, cast)
         end)
     end)
 end)
+
+extras.Loaded("SwingTimer")

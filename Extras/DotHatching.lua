@@ -177,3 +177,5 @@ DUI.On("SettingChanged", function(scope, path)
         if target and target.dotVeil then dots.TintVeil(target.dotVeil, dots.Tint()) end
     end
 end)
+
+extras.Loaded("DotHatching")

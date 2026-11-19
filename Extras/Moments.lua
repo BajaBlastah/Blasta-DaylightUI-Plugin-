@@ -160,10 +160,10 @@ local function makeRoom(b, bar, left, angled)
 end
 
 local function angle(b, bar, followShellOnly)
-    local side, cut = style.GetFillAngle(bar)
+    local side, cut, under = style.GetFillAngle(bar)
     if followShellOnly then side, cut = nil, nil end
-    style.AngleFill(b, side, cut)
-    style.AngleTrail(b, side, cut)
+    style.AngleFill(b, side, cut, under)
+    style.AngleTrail(b, side, cut, under)
 end
 
 -- Invisible copies of the bar holding a value of our choice: the health just
@@ -1857,3 +1857,5 @@ function extras.BarEffectsPage()
         }),
     } }
 end
+
+extras.Loaded("Moments")

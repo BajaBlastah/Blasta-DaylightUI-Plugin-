@@ -101,7 +101,7 @@ L["Spider Silk"] = "Spinnenseide"
 L["Filters"] = "Filter"
 L["Dungeon filters"] = "Dungeonfilter"
 L["Blasta Dungeon Finder"] = "Blasta Dungeonfinder"
-L["Enable the docked dungeon filters in DaylightUI's group finder, and show groups and solo players side by side when the window is wide enough."] = "Aktiviert das angedockte Filterfenster in DaylightUIs Gruppensuche und zeigt Gruppen und Einzelspieler nebeneinander, wenn das Fenster breit genug ist."
+L["Enable the docked dungeon filters in DaylightUI's group finder: several dungeons, open roles, who is already in the group, level ranges and one-click applying."] = "Aktiviert das angedockte Filterfenster in DaylightUIs Gruppensuche: mehrere Dungeons, offene Rollen, wer schon in der Gruppe ist, Stufenbereiche und Bewerben mit einem Klick."
 L["Dungeon"] = "Dungeon"
 L["All dungeons"] = "Alle Dungeons"
 L["Search dungeons"] = "Dungeon suchen"
@@ -150,8 +150,8 @@ L["The thin dark line round the middle of the ring. When off, the ring is one sm
 L["Portrait position"] = "Porträtposition"
 L["Party resource bar"] = "Gruppen-Ressourcenleiste"
 L["Compact party resource bar"] = "Kompakte Gruppen-Ressourcenleiste"
-L["Give each party member a resource bar that can sit below or overlap the health bar."] =
-    "Platziert pro Gruppenmitglied eine Ressourcenleiste unter oder überlappend auf dem Lebensbalken."
+L["Give each party member a resource bar that can sit below or overlap the health bar. While it's on, its own height and offsets below set the bar, in place of DaylightUI's party power height and gap."] =
+    "Platziert pro Gruppenmitglied eine Ressourcenleiste unter oder überlappend auf dem Lebensbalken. Solange sie an ist, bestimmen ihre eigenen Höhen- und Versatzregler unten die Leiste statt DaylightUIs Höhe und Abstand der Gruppen-Ressourcenleiste."
 L["Resource bar width"] = "Breite der Ressourcenleiste"
 L["On the frame"] = "Am Rahmen"
 L["On its own (unlock to move)"] = "Freistehend (zum Verschieben entsperren)"
@@ -418,8 +418,8 @@ L["Turn off shared Daylight settings in AddonSkins to edit this skin."] = "Schal
 L["Test aura reminder"] = "Aura-Erinnerung testen"
 L["Cast the next missing buff"] = "Nächsten fehlenden Buff wirken"
 L["Key Bindings"] = "Tastenbelegung"
-L["Bind this under Daylight Blasta in WoW's Key Bindings. Each press uses one missing buff outside combat."] =
-    "Lege die Taste in der WoW-Tastenbelegung unter Daylight Blasta fest. Außerhalb des Kampfes wirkt jeder Tastendruck einen fehlenden Buff."
+L["Bind this under Blasta (DaylightUI Plugin) in WoW's Key Bindings. Each press uses one missing buff outside combat."] =
+    "Lege die Taste in der WoW-Tastenbelegung unter Blasta (DaylightUI Plugin) fest. Außerhalb des Kampfes wirkt jeder Tastendruck einen fehlenden Buff."
 L["Experience bar"] = "EP-Leiste"
 L["Experience border thickness"] = "Rahmendicke der EP-Leiste"
 L["Gain animation"] = "EP-Gewinn-Animation"
@@ -791,7 +791,88 @@ L["A lighter look for the RestedXP guide window: no boxes or background, just th
 L["Hovering a boat or zeppelin symbol on the world map draws its route as a solid line, with an arrow where it leaves the map. On continent and world maps, a small dock symbol shows the routes the same way. Needs DaylightUI's \"Boats and zeppelins\"."] =
     "Fährst du auf der Weltkarte über ein Boot- oder Zeppelinsymbol, wird seine Route als durchgezogene Linie gezeichnet, mit Pfeil, wo sie die Karte verlässt. Auf Kontinent- und Weltkarte zeigt ein kleines Stegsymbol die Routen genauso. Braucht DaylightUIs „Boats and zeppelins“."
 
+-- Blasta's own menu (1.8).
+L["Overview"] = "Übersicht"
+L["Unit frames"] = "Einheitenfenster"
+L["Auras & DoTs"] = "Auren & DoTs"
+L["Action bars"] = "Aktionsleisten"
+L["Info panel & buffs"] = "Info-Panel & Buffs"
+L["Tooltips & money"] = "Tooltips & Geld"
+L["Windows"] = "Fenster"
+L["World & moments"] = "Welt & Momente"
+L["Bar effects"] = "Leisten-Effekte"
+L["Resource costs"] = "Ressourcenkosten"
+L["Data texts"] = "Datentexte"
+L["Buff reminders"] = "Buff-Erinnerungen"
+L["Group Finder"] = "Gruppensuche"
+L["Character"] = "Charakter"
+L["World map"] = "Weltkarte"
+L["Zone title"] = "Zonentitel"
+L["Open"] = "Öffnen"
+L["Button spacing (fine)"] = "Tastenabstand (fein)"
+L["Button size (half pixels)"] = "Tastengröße (halbe Pixel)"
+L["Blasta animation"] = "Blasta-Animation"
+L["One of Blasta's animations for this bar, in place of DaylightUI's. Speed, strength and colors below go for both. Needs Motion effects."] = "Eine von Blastas Animationen für diese Leiste, anstelle von DaylightUIs. Tempo, Stärke und Farben darunter gelten für beide. Braucht Bewegungseffekte."
+L["AFK screen"] = "AFK-Bildschirm"
+L["Look"] = "Aussehen"
+L["Settings"] = "Einstellungen"
+L["Bug report"] = "Bug-Report"
+L["Report a Blasta bug"] = "Blasta-Fehler melden"
+L["Opens a window with everything a bug report needs, ready to copy."] =
+    "Öffnet ein Fenster mit allem, was ein Fehlerbericht braucht, fertig zum Kopieren."
+L["Everything Blasta adds, in one place."] = "Alles, was Blasta hinzufügt, an einem Ort."
+L["Blasta (DaylightUI Plugin)"] = "Blasta (DaylightUI Plugin)"
+L["Blasta adds settings and refinements to DaylightUI. It's a plugin by its own author, not part of DaylightUI: please send Blasta bugs to Blasta, not to the DaylightUI team."] =
+    "Blasta ergänzt DaylightUI um Einstellungen und Feinschliff. Es ist ein Plugin eines eigenen Autors und kein Teil von DaylightUI: Melde Blasta-Fehler bitte bei Blasta, nicht beim DaylightUI-Team."
+L["Frame slants, portrait shapes, party portraits and resource bar, text sizes, level badges and bar effects."] =
+    "Schrägen, Porträtformen, Gruppen-Porträts und -Ressourcenleiste, Textgrößen, Stufen-Abzeichen und Leisten-Effekte."
+L["Aura bars, aura sizes and shapes, the dispel highlight, DoT fill, finisher damage and Shadow Word: Death."] =
+    "Auraleisten, Aura-Größen und -Formen, Bannhervorhebung, DoT-Füllung, Finisher-Schaden und Schattenwort: Tod."
+L["Nameplate shape and edges, borders, names, the cast bar's entrance, aura sizes and motion."] =
+    "Form und Kanten der Namensplaketten, Ränder, Namen, Einfahren der Zauberleiste, Aura-Größen und -Bewegung."
+L["Pixel-exact bars, slants, resource costs on buttons, channel ticks and food and drink bars."] =
+    "Pixelgenaue Leisten, Schrägen, Ressourcenkosten auf Tasten, Kanalisierungs-Ticks und Essen-und-Trinken-Leisten."
+L["Experience bar and its animation, data texts, the top right layout, buffs and buff reminders."] =
+    "Erfahrungsleiste und ihre Animation, Datentexte, das Layout oben rechts, Buffs und Buff-Erinnerungen."
+L["Blasta tooltips, their text sizes, DaylightUI's coins everywhere and sell prices per piece."] =
+    "Blasta-Tooltips, ihre Textgrößen, DaylightUIs Münzen überall und Verkaufspreise pro Stück."
+L["Group finder, spellbook and training, character window, professions, bags and quests."] =
+    "Gruppensuche, Zauberbuch und Training, Charakterfenster, Berufe, Taschen und Quests."
+L["World map levels and routes, zone title, loot feed, flight and breath timers, AFK screen."] =
+    "Stufen und Routen auf der Weltkarte, Zonentitel, Beute-Feed, Flug- und Atem-Timer, AFK-Bildschirm."
+L["Language, login message, startup animation and profiles."] = "Sprache, Login-Nachricht, Startanimation und Profile."
+
 -- Last, so every line above reaches Blasta's German table.
 for key, value in pairs(L) do
     if not extras.German[key] then rawset(extras.German, key, value) end
 end
+
+local tabReset = {
+    ["Reset this tab"] = "Diesen Tab zurücksetzen",
+    ["Reset"] = "Zurücksetzen",
+    ["Puts Blasta's settings on this tab back to their defaults. The rest of the page stays as it is."] =
+        "Setzt Blastas Einstellungen auf diesem Tab auf die Standardwerte zurück. Der Rest der Seite bleibt, wie er ist.",
+}
+for k, v in pairs(tabReset) do if not extras.German[k] then extras.German[k] = v end end
+for k, v in pairs({ Gold = "Gold", Text = "Text", Layout = "Anordnung", Chat = "Chat" }) do
+    if not extras.German[k] then extras.German[k] = v end
+end
+
+local news = {
+    ["Interrupt hint: an enemy's cast bar lights up while you can interrupt it now."] =
+        "Unterbrechungs-Hinweis: Die Zauberleiste eines Gegners leuchtet, solange du sie jetzt unterbrechen kannst.",
+    ["Dispel highlight: only what your class removes, and only while you can cast your dispel."] =
+        "Bannmarkierung: nur was deine Klasse entfernen kann, und nur wenn du deinen Bannzauber gerade wirken kannst.",
+    ["Design mode: drag the raid marker on target and focus, and the time on nameplate cast bars."] =
+        "Design-Modus: Zielmarkierung an Ziel und Fokus sowie die Zeit auf Plaketten-Zauberleisten verschieben.",
+    ["Finisher damage color works again with DaylightUI 1.9.4."] =
+        "Die Farbe für Finisher-Schaden funktioniert wieder mit DaylightUI 1.9.4.",
+    ["Reset this tab: at the end of every tab, resets only that tab."] =
+        "Diesen Tab zurücksetzen: am Ende jedes Tabs, setzt nur diesen Tab zurück.",
+    ["/blasta check: lists Blasta parts that don't work with your DaylightUI version."] =
+        "/blasta check: zeigt Blasta-Teile, die mit deiner DaylightUI-Version nicht funktionieren.",
+    ["Show"] = "Zeigen",
+    ["Character window: health and power as bars on top of the stats."] =
+        "Charakterfenster: Gesundheit und Ressource als Leisten über den Werten.",
+}
+for k, v in pairs(news) do if not extras.German[k] then extras.German[k] = v end end

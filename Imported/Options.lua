@@ -3,55 +3,199 @@ if not ns.ok then return end
 
 local DUI = DaylightUI
 
--- Blasta no longer skins other addons (AddonSkins by Glowey_ does that); the call
--- still moves Blasta's rows onto DaylightUI's own pages.
-ns.MoveSettings()
-local pages = {}
+-- Blasta's own menu. Everything Blasta adds sits here, in its own section of
+-- DaylightUI's options window, and DaylightUI's pages show only DaylightUI.
+-- Rows that extend a DaylightUI feature still save in that feature's module
+-- (Settings.lua bridges them), and each page shows a live preview on top that
+-- follows its tabs.
+local collected = ns.CollectSettings()
+local menu = ns.MENU
 
--- Settings that extend a DaylightUI feature sit on that feature's DaylightUI
--- page (Daylight's plugin API marks the card "From Blasta"); what DaylightUI
--- has nothing like keeps a page here.
-local function pageOf(source) return source and source.groups or {} end
-local function toDaylight(pageId, groups, after)
+local own = {}   -- Blasta page id -> { { group, tab, sample } } of Blasta's own cards
+local function add(where, tab, groups, sample)
+    own[where] = own[where] or {}
     for _, group in ipairs(groups or {}) do
-        group.tab = nil
-        ns.AddToDaylight(pageId, group, after)
+        own[where][#own[where] + 1] = { group = group, tab = tab, sample = sample }
+    end
+end
+local function groupsOf(page) return page and page.groups or {} end
+local function call(fn, ...) if type(fn) == "function" then return fn(...) end end
+
+local unitFrames = DUI:GetModule("UnitFrames")
+local barCard = unitFrames and ns.AuraBarCard and ns.AuraBarCard()
+if barCard then add("auras", "Aura bars", groupsOf(ns.ShowDaylightRequirements({ groups = { barCard } }, unitFrames))) end
+add("units", "Bar effects", groupsOf(call(ns.BarEffectsPage)))
+add("bars", "Resource costs", { ns.RageNeedGroup }, ns.RageNeedSample and function(parent) return ns.RageNeedSample(parent) end)
+add("bars", "Food and drink", { call(ns.ConsumableBarsGroup) })
+add("info", "Experience bar", groupsOf(call(ns.ExperiencePage)))
+add("info", "General", groupsOf(call(ns.InfoPanelSpacingPage)))
+add("info", "Data texts", groupsOf(call(ns.DataTextColorPage)))
+add("info", "Buffs", groupsOf(call(ns.PlayerAuraLayoutPage)))
+add("info", "Buff reminders", groupsOf(call(ns.AuraReminderPage)))
+add("windows", "Group Finder", { ns.DungeonFinderGroup })
+add("windows", "Spellbook", { ns.SpellbookGroup })
+add("windows", "Character", { ns.CharacterPanelGroup })
+add("world", "World map", { ns.MapLevelsGroup })
+add("world", "Zone title", { call(ns.ZoneTitleExtrasGroup) })
+add("world", "Loot feed", groupsOf(call(ns.LootFeedPage)))
+add("language", "General", groupsOf(call(ns.GeneralPage)))
+add("language", "Profiles", groupsOf(call(ns.ProfileTransferPage)))
+
+-- What each page holds, for the overview.
+local BLURB = {
+    units = "Frame slants, portrait shapes, party portraits and resource bar, text sizes, level badges and bar effects.",
+    auras = "Aura bars, aura sizes and shapes, the dispel highlight, DoT fill, finisher damage and Shadow Word: Death.",
+    plates = "Nameplate shape and edges, borders, names, the cast bar's entrance, aura sizes and motion.",
+    bars = "Pixel-exact bars, slants, resource costs on buttons, channel ticks and food and drink bars.",
+    info = "Experience bar and its animation, data texts, the top right layout, buffs and buff reminders.",
+    tooltips = "Blasta tooltips, their text sizes, DaylightUI's coins everywhere and sell prices per piece.",
+    windows = "Group finder, spellbook and training, character window, professions, bags and quests.",
+    world = "World map levels and routes, zone title, loot feed, flight and breath timers, AFK screen.",
+    language = "Language, login message, startup animation and profiles.",
+}
+
+local pages = {}
+local samples = {}   -- page -> { [raw tab or ""] = source }
+for _, entry in ipairs(menu) do
+    local where = entry.id
+    local dest = collected[where]
+    local groups, bySource = {}, {}
+    if dest then
+        for _, card in ipairs(dest.order) do
+            card.blastaRawTab = card.tab
+            groups[#groups + 1] = card
+        end
+        for tab, source in pairs(dest.samples) do bySource[tab] = source end
+    end
+    for _, item in ipairs(own[where] or {}) do
+        local group = item.group
+        if group and group.items then
+            group.tab = item.tab
+            group.blastaRawTab = item.tab
+            groups[#groups + 1] = group
+            local key = item.tab or ""
+            if item.sample and not bySource[key] then bySource[key] = { sample = item.sample } end
+        end
+    end
+    -- Tabs in a steady order: each tab's cards together, tabs as they first
+    -- appear. One tab only is no tabs at all; a card without one joins "General".
+    local tabOrder, seen = {}, {}
+    for _, group in ipairs(groups) do
+        local tab = group.tab
+        if tab and not seen[tab] then seen[tab] = true; tabOrder[#tabOrder + 1] = tab end
+    end
+    local rank = {}
+    for i, tab in ipairs(tabOrder) do rank[tab] = i end
+    for i, group in ipairs(groups) do
+        local tab = group.tab
+        if #tabOrder < 2 then
+            group.tab = nil
+        elseif not tab then
+            group.tab = "General"
+            tab = rank.General and "General" or nil
+        end
+        group.blastaSort = (tab and rank[tab] or 0) * 1000 + i
+    end
+    table.sort(groups, function(a, b) return a.blastaSort < b.blastaSort end)
+    for _, group in ipairs(groups) do group.blastaSort = nil end
+    if where == "start" or #groups > 0 then
+        local page = { id = where, label = entry.label, desc = BLURB[where], groups = groups }
+        pages[#pages + 1] = page
+        samples[page] = bySource
     end
 end
 
-if ns.ExperiencePage then toDaylight("InfoPanel.panel", pageOf(ns.ExperiencePage()), "Experience bar") end
-if ns.InfoPanelSpacingPage then toDaylight("InfoPanel.panel", pageOf(ns.InfoPanelSpacingPage())) end
-if ns.DataTextColorPage then toDaylight("InfoPanel.data", pageOf(ns.DataTextColorPage())) end
-if ns.PlayerAuraLayoutPage then toDaylight("Buffs.buffs", pageOf(ns.PlayerAuraLayoutPage())) end
-if ns.AuraReminderPage then toDaylight("Buffs.buffs", pageOf(ns.AuraReminderPage())) end
-local unitFrames = DUI:GetModule("UnitFrames")
-local barCard = unitFrames and ns.AuraBarCard and ns.AuraBarCard()
-if barCard then
-    toDaylight("UnitFrames.player", pageOf(ns.ShowDaylightRequirements({ groups = { barCard } }, unitFrames)))
+-- The overview: what Blasta is, then one line per page with a way there.
+local start = pages[1]
+local function open(id)
+    return function()
+        local panel = DUI.OptionsPanel
+        if panel and panel.Show then panel.Show(ADDON .. "." .. id) end
+    end
 end
-if ns.BarEffectsPage then toDaylight("UnitFrames.colors", pageOf(ns.BarEffectsPage())) end
-if ns.LootFeedPage then toDaylight("QoL.loot", pageOf(ns.LootFeedPage())) end
-if ns.ZoneTitleExtrasGroup then toDaylight("QoL.qol", { ns.ZoneTitleExtrasGroup() }, "Level up, zone and reputation") end
-if ns.DungeonFinderGroup then toDaylight("windows", { ns.DungeonFinderGroup }, "Group Finder") end
-if ns.SpellbookGroup then toDaylight("windows", { ns.SpellbookGroup }, "Spellbook") end
-if ns.MapLevelsGroup then toDaylight("Skins.skins", { ns.MapLevelsGroup }, "World map") end
-if ns.CharacterPanelGroup then toDaylight("Character.window", { ns.CharacterPanelGroup }) end
-
--- Blasta's own: consumable bars, language and profiles.
-if ns.ConsumableBarsGroup then
-    pages[#pages + 1] = { id = "consumables", label = "Consumable bars", groups = { ns.ConsumableBarsGroup() } }
+local overview = { label = "Blasta (DaylightUI Plugin)", items = {
+    { type = "text", label = "Blasta adds settings and refinements to DaylightUI. It's a plugin by its own author, "
+        .. "not part of DaylightUI: please send Blasta bugs to Blasta, not to the DaylightUI team." },
+    { type = "button", label = "Report a Blasta bug", text = "Bug report",
+      desc = "Opens a window with everything a bug report needs, ready to copy.",
+      func = function() if ns.Report and ns.Report.Show then ns.Report.Show() end end },
+} }
+local areas = { label = "Settings", items = {} }
+for i = 2, #pages do
+    local page = pages[i]
+    areas.items[#areas.items + 1] = { type = "button", label = page.label, desc = BLURB[page.id], text = "Open",
+        func = open(page.id) }
 end
-pages[#pages + 1] = ns.GeneralPage()
-if ns.ProfileTransferPage then pages[#pages + 1] = ns.ProfileTransferPage() end
+-- What's new in this version, each with a way to its setting. Shown for the
+-- version only; the rows themselves carry the "New" tag on their pages.
+local function pageWith(key)
+    for _, page in ipairs(pages) do
+        for _, group in ipairs(page.groups or {}) do
+            for _, item in ipairs(group.items or {}) do
+                if item.key == key then return page end
+            end
+        end
+    end
+end
+local function jump(key, fallback)
+    return function()
+        local panel = DUI.OptionsPanel
+        local page = key and pageWith(key)
+        local id = page and page.id or fallback
+        if not (panel and panel.Show and id) then return end
+        panel.Show(ADDON .. "." .. id)
+        if key and panel.JumpTo then C_Timer.After(0, function() pcall(panel.JumpTo, { key }) end) end
+    end
+end
+local NEWS = {
+    { "Interrupt hint: an enemy's cast bar lights up while you can interrupt it now.", "blastaKickHint", "plates" },
+    { "Dispel highlight: only what your class removes, and only while you can cast your dispel.", "blastaDispelUsable", "units" },
+    { "Character window: health and power as bars on top of the stats.", "characterPanel.statsBars", "windows" },
+    { "Design mode: drag the raid marker on target and focus, and the time on nameplate cast bars.", "castTimeX", "plates" },
+    { "Finisher damage color works again with DaylightUI 1.9.4.", "colors.blastaFinisherTintEnabled", "auras" },
+    { "Reset this tab: at the end of every tab, resets only that tab.", nil, nil },
+    { "/blasta check: lists Blasta parts that don't work with your DaylightUI version.", nil, nil },
+}
+local version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version")
+local news = { label = "New in Blasta " .. tostring(version or ""), items = {} }
+if ns.German then ns.German[news.label] = "Neu in Blasta " .. tostring(version or "") end
+for _, entry in ipairs(NEWS) do
+    if entry[2] == nil or pageWith(entry[2]) then
+        if entry[3] then
+            news.items[#news.items + 1] = { type = "button", label = entry[1], text = "Show", noSearch = true,
+                func = jump(entry[2], entry[3]) }
+        else
+            news.items[#news.items + 1] = { type = "text", label = entry[1], noSearch = true }
+        end
+    end
+end
+start.groups = { overview, news, areas }
+start.desc = "Everything Blasta adds, in one place."
 
--- Pages in the order of the areas they belong to: general, units and auras,
--- the interface, content, then profiles.
-local PAGE_ORDER = { "language", "consumables", "blastaProfiles" }
-local rank = {}
-for i, id in ipairs(PAGE_ORDER) do rank[id] = i end
-for i, page in ipairs(pages) do page.blastaOrder = (rank[page.id] or #PAGE_ORDER + 1) * 1000 + i end
-table.sort(pages, function(a, b) return a.blastaOrder < b.blastaOrder end)
-for _, page in ipairs(pages) do page.blastaOrder = nil end
+-- A help line on each tab and buttons that open the windows a tab changes
+-- (SidePanel.lua), before the names are translated.
+if ns.AddMenuHelp then ns.AddMenuHelp(pages) end
 
 ns.LocalizePages(pages)
+
+-- The Tooltips page shows its preview in a column on the right of the
+-- window (SidePanel.lua) instead of the strip above the settings.
+local COLUMN = { tooltips = ns.TooltipSample ~= nil and ns.RefreshTooltipColumn ~= nil }
+
+-- Previews after the tabs are translated: the panel reports the shown tab by
+-- its finished name.
+for _, page in ipairs(pages) do
+    local bySource, byTab, any, known = samples[page], {}, false, {}
+    for _, group in ipairs(page.groups) do
+        for _, row in ipairs(group.items) do
+            if type(row.key) == "string" then known[row.key] = true end
+        end
+        local source = bySource[group.blastaRawTab or ""]
+        local tab = group.tab or ""
+        if source and byTab[tab] == nil then byTab[tab] = source; any = true end
+        group.blastaRawTab = nil
+    end
+    if any and not COLUMN[page.id] then page.sample = ns.TabbedSample(byTab, known) end
+end
+
 ns.RegisterSettings(pages)

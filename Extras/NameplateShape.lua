@@ -321,20 +321,30 @@ end
 
 local stop = Cast.Stop
 function Cast.Stop(p, snap)
-    local c = p.cast
-    if not snap and Motion.OwnsKickExit and Motion.OwnsKickExit(p.blade, c) then return end
-    stopSlide(c)
+    stopSlide(p.cast)
     return stop(p, snap)
 end
 
-if Cast.Interrupted then
-    hooksecurefunc(Cast, "Interrupted", function(p)
-        if not Motion.FinishKickWith then return end
-        local c, token = p.cast, p.cast.token
-        if Motion.FinishKickWith(p.blade, c, function()
-            if c.token == token and c:IsShown() then Cast.Stop(p, true) end
-        end) then c.text:SetText("") end
-    end)
+-- The kick's pieces follow the cast bar's right edge. DaylightUI cuts them
+-- along its own edge, so a cast bar with Blasta's own right edge hands
+-- Motion.Kick that edge instead (DaylightUI 1.9.4 keeps the bar red for a
+-- moment on its own; Blasta no longer holds it).
+if Motion and Motion.Kick then
+    local kick = Motion.Kick
+    function Motion.Kick(k, over, style, r, g, b, shape)
+        local geo = over and angled[over]
+        local custom = geo and over.body and customCast[over.body]
+        if shape and custom and geo.rightTop and geo.rightBottom then
+            local W, H = geo.W or over:GetWidth(), geo.H or over:GetHeight()
+            if type(W) == "number" and type(H) == "number" and H > 0 then
+                local top, bottom = geo.rightTop, geo.rightBottom
+                local slope = math.sqrt(1 + ((bottom - top) / H) ^ 2)
+                shape = { T = shape.T, edge = shape.edge, fill = shape.fill,
+                    right = function(y, inset) return W - top - (bottom - top) * y / H - inset * slope end }
+            end
+        end
+        return kick(k, over, style, r, g, b, shape)
+    end
 end
 
 local kicked = Cast.Kicked
@@ -358,3 +368,5 @@ function Cast.ShowSample(p, data)
     sample(p, data)
     if data and entering and c:IsShown() then slideIn(c) end
 end
+
+extras.Loaded("NameplateShape")

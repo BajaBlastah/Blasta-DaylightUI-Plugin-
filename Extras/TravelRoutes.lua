@@ -492,3 +492,5 @@ end)
 DUI.On("SettingChanged", function(scope, key)
     if (scope == ADDON and key == KEY) or scope == "Skins" then C_Timer.After(0, setup) end
 end)
+
+extras.Loaded("TravelRoutes")

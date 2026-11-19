@@ -351,3 +351,5 @@ DUI.On("SettingChanged", function(scope, key)
         pageAPI.Refresh(page)
     end
 end)
+
+extras.Loaded("CharacterPanel")

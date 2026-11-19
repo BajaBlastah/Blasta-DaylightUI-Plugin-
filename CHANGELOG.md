@@ -1,8 +1,70 @@
+# Blasta (DaylightUI Plugin) — next version (in development)
+
+## Unit frames
+
+- **Reversed power bars slanted at both ends** — With **Reverse unit frame slant** on, a power bar slanted at both ends (the player's, or the target's or focus's on its own) now turns over with its fill: wider at the bottom, so the fill's edge follows the bar's end instead of leaning against it. Blasta also hands DaylightUI's own fill flip through again, so the power cost shade, bar lights and bar moments lean with the fill, and bars flipped in DaylightUI's settings (power bar, cast bar, swing timer) keep their flip. Flight timer, breath bars and nameplates use the same flip. Thanks to [AlexisWalravens](https://github.com/AlexisWalravens) ([pull request #2](https://github.com/BajaBlastah/Blasta-DaylightUI-Plugin-/pull/2)).
+
+
+# Blasta (DaylightUI Plugin) 1.9.0 — 2026-11-18
+
+**Two big changes, so nothing gets confusing:** the plugin is now called **Blasta (DaylightUI Plugin)** (before: Daylight Blasta), and **all of its settings moved into its own menu**. Blasta is a plugin by its own author, not part of DaylightUI: please send Blasta bugs to Blasta, not to the DaylightUI team. Made for DaylightUI 1.9.4.
+
+## New name
+
+- **Blasta (DaylightUI Plugin)** — The name DaylightUI asks every plugin to carry, in the game's addon list (in Blasta's blue-to-lime colors), in Key Bindings and in the login message. Inside DaylightUI's options it just says Blasta. Your settings stay as they were.
+
+## Blasta's own menu
+
+- **Everything in one place** — Every Blasta setting sits in Blasta's own section of DaylightUI's options window (`/blasta`). DaylightUI's pages show only DaylightUI again: no Blasta rows, badges or notes left in them.
+- **Ten pages** — Overview, Unit frames, Auras & DoTs, Nameplates, Action bars, Info panel & buffs, Tooltips & money, Windows, World & moments and General. Long pages have tabs, e.g. Player, Target, Party, Raid, More frames, Look and Cast bars on Unit frames.
+- **Short help on every tab** — The first card of each tab starts with a line on what the tab is for, in German or English by Blasta's language. The Windows and World tabs also have buttons that open the window they change (group finder, spellbook, character window, bags, quest log, world map).
+- **Tall tooltip preview** — The Tooltips page shows the Blasta tooltip tall in a column on the right of the options window, with view chips for an item, your own item, a spell, a buff, a player, an enemy and a quest. Click **Item** again for a recipe or a quest item. The preview reads real tooltips, so it looks exactly like in the game: an item, recipe or quest item from your bags, a spell from your bars, one of your buffs, yourself, your target and a quest from your log, at the same width as in the game. Only when there's none of a kind does a made-up sample stand in. Click a part of it to jump to its setting.
+- **What's new** — The Overview lists what this version adds, each with a **Show** button that opens its setting. New rows carry a "New" tag on their pages.
+- **Reset this tab** — The last card of every tab ends with a button that puts only that tab's Blasta settings back to their defaults (click twice). DaylightUI's own settings shown there stay as they are.
+- **Search finds the right rows** — Searching DaylightUI's options for "menu", "blasta" or "light" no longer lists every Blasta row. Blasta's rows match their English text and the language Blasta shows.
+- **Live previews with Design mode** — Unit frame and nameplate tabs show DaylightUI's live preview of that frame on top. DaylightUI's Design mode works there: drag Blasta's parts like the leader crown or the PvP badge into place, and they save where they belong.
+- **Clearer names** — The flight master bar and the breath and fatigue bars sit together under **Flight & breath bars**, each card named after its bar.
+- **Smaller heading** — Blasta's heading in the options list is DaylightUI's normal size again and reads just "Blasta".
+- **Nothing lost** — Every setting keeps its value. Settings that extend a DaylightUI feature still save with that feature, and a line on the card says when its DaylightUI module or switch is off.
+
+## Nameplates
+
+- **Interrupt hint** — An enemy's cast bar lights up while you could interrupt it right now: the cast can be interrupted and your interrupt is ready (DaylightUI knows it by class, rank, stance and form). Pulsing or steady, in a color of your choice, on every enemy or only your target. Off by default: **Blasta → Nameplates → Interrupt hint**.
+- **Move the cast time** — The remaining time on enemy cast bars has its own left/right and up/down sliders and can be dragged in Design mode.
+- **Interrupts with Blasta's cast bar edges** — When a cast bar with Blasta's own right edge is interrupted, the pieces now follow that edge. DaylightUI 1.9.4 keeps the red "Interrupted" bar for a moment itself, so Blasta no longer holds it.
+
+## Unit frames and auras
+
+- **Dispel highlight fits your class** — "Only mine" is now **Only what you can remove** and on by default: the highlight shows only effects your class can remove. New: **Only while you can cast it** hides it while your dispel can't be cast right now (in a form without it, silenced or out of mana). To see every dispel type again, switch it off on the card.
+- **Finisher damage color works again** — DaylightUI 1.9.4 no longer splits the damage left by kind, so Blasta keeps its own record of your finishers (Rupture, Rip and the like) and colors their share separately again.
+- **Raid marker in Design mode** — The raid marker on the target and focus frames has left/right and up/down sliders and can be dragged in Design mode.
+
+## Character window
+
+- **Health and power bars** — Health and your power (mana, rage, energy) sit as two bars on top of the stats, in place of their rows. The rest of DaylightUI's list stays as it is. Hover a bar for its tooltip. Off by default: **Blasta → Windows → Character → Health and power bars**.
+
+## Compatibility
+
+- **Check after DaylightUI updates** — After login Blasta checks that every part found what it needs in DaylightUI. If one stays off, it says so once in chat per DaylightUI version. `/blasta check` lists it again, and `/blasta report` adds it to the bug report.
+
+## Bar animations
+
+- **Blasta animations on their own** — Blasta's animations (Frost, Arcane, Holy, Nature, Shadowflame, Lava, Radiance, Wild, Storm, Poison, By class) are no longer in DaylightUI's "Bar animation" list. Each bar's card on Blasta's pages has its own **Blasta animation** choice, with the live sample, speed, strength, colors and "Only in combat". A bar that wore a Blasta animation keeps it: the pick moves over by itself.
+
+## Action bars
+
+- **Finer size and spacing** — Half-pixel button sizes and spacing down to −10 are Blasta's own sliders now (Action bars → Bars), the same settings as DaylightUI's. DaylightUI's own sliders are as DaylightUI made them.
+
+## Removed (DaylightUI does it now)
+
+- **Zone levels on the world map** — DaylightUI 1.9.4 shows the hovered zone's level range itself (Game window skins → World map → Zone levels). Blasta's own label is gone; the zone title still shows the level range of the zone you're in.
+- **Group finder side by side** — DaylightUI 1.9.4 shows groups and solo players side by side in a wide window, with its own resize grip. Blasta's two columns and its own window width are gone. The filters, several dungeons, level ranges and one-click applying stay.
+
 # Daylight Blasta 1.8.0 — 2026-11-18
 
 ## Info panel
 
-- **Exact money is now opt-in** — The full gold, silver and copper amount no longer shows by default, since it often got cut off in the minimap info panel. Turn it on under **Info panel → Data text colors → Show exact money**.
+- **Exact money is now opt-in** — The full gold, silver and copper amount no longer shows by default, since it often got cut off in the minimap info panel. Turn it on under **Blasta → Info panel & buffs → Data texts → Show exact money**.
 
 ## Dungeon finder
 
@@ -26,20 +88,16 @@
 
 ## Tooltips and money
 
-- **Daylight coins everywhere** — Prices other addons add to tooltips (Auctionator's auction and vendor prices), every money box the game updates (merchant, mail, quests) and Auctionator's auction house lists now use DaylightUI's coins. Switch: **Tooltip → Daylight coins everywhere**, on by default.
-- **Sell price per piece** — On a stack the game's sell price was for the whole stack while Auctionator's prices are per piece. The sell price now follows Auctionator: one piece, and "Sell price x20" for the stack with Shift (or the other way round, by Auctionator's "Shift for stack price" setting). Switch: **Tooltip → Sell price per piece**, on by default.
+- **Daylight coins everywhere** — Prices other addons add to tooltips (Auctionator's auction and vendor prices), every money box the game updates (merchant, mail, quests) and Auctionator's auction house lists now use DaylightUI's coins. Switch: **Blasta → Tooltips & money → Daylight coins everywhere**, on by default.
+- **Sell price per piece** — On a stack the game's sell price was for the whole stack while Auctionator's prices are per piece. The sell price now follows Auctionator: one piece, and "Sell price x20" for the stack with Shift (or the other way round, by Auctionator's "Shift for stack price" setting). Switch: **Blasta → Tooltips & money → Sell price per piece**, on by default.
 
 ## World map
 
-- **Boat and zeppelin routes** — Builds on DaylightUI's "Boats and zeppelins" symbols. Hovering one on a zone map draws its route as a bold solid line, with an arrow where it leaves the map. On continent and world maps a small dock symbol stands at each dock and shows its routes on hover. Lines are solid gold with a thin dark edge so they read on any map. Switch: **Game window skins → World map → Boat and zeppelin routes**, on by default.
+- **Boat and zeppelin routes** — Builds on DaylightUI's "Boats and zeppelins" symbols. Hovering one on a zone map draws its route as a bold solid line, with an arrow where it leaves the map. On continent and world maps a small dock symbol stands at each dock and shows its routes on hover. Lines are solid gold with a thin dark edge so they read on any map. Switch: **Blasta → World & moments → World map → Boat and zeppelin routes**, on by default.
 
 ## Zone title
 
 - **German texts** — "Discovered", "Resting" and a few other late additions (Only in combat, Kills to the next level, Blasta report, the zone title settings) now show in German. They never reached the German table before.
-
-## Addon list
-
-- **Blasta colors** — "Blasta" now shows in its blue-to-lime gradient in the game's addon list.
 
 ## Removed
 

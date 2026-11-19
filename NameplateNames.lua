@@ -151,3 +151,5 @@ function ns.Plate.PlaceSpots(plate)
     end
     return place(plate)
 end
+
+blasta.Loaded("NameplateNames")

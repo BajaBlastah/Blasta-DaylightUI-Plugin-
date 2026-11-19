@@ -1,3 +1,4 @@
+local _, blasta = ...
 local DUI = DaylightUI
 local craft = DUI.Craft
 local window = craft and craft.Window
@@ -96,3 +97,5 @@ function window.Close(...)
     pending = nil
     return close(...)
 end
+
+blasta.Loaded("ProfessionTabs")

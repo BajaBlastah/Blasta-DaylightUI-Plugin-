@@ -201,3 +201,5 @@ DUI.On("StyleChanged", function() C_Timer.After(0, layout) end)
 DUI.On("SettingChanged", function(scope)
     if scope == "general" then C_Timer.After(0, layout) end
 end)
+
+extras.Loaded("FlightTimer")

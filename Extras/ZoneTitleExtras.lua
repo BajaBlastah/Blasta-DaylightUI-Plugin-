@@ -232,3 +232,5 @@ function extras.ZoneTitleExtrasGroup()
             end },
     } }
 end
+
+extras.Loaded("ZoneTitleExtras")

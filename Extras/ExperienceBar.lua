@@ -499,3 +499,5 @@ function extras.ExperiencePage()
     end
     return extras.ShowDaylightRequirements(page, mod, "xp.enabled")
 end
+
+extras.Loaded("ExperienceBar")

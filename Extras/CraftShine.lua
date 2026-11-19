@@ -51,3 +51,5 @@ function parts.Shine(row, ...)
         clip.light:SetPoint("RIGHT", clip, "LEFT", -width + progress * (clip:GetWidth() + width * 2), 0)
     end, function() clip:Hide() end)
 end
+
+extras.Loaded("CraftShine")

@@ -267,3 +267,5 @@ function Auras.ShowSample(p, what, list, ...)
 end
 
 DUI.On("Login", useBorder)
+
+extras.Loaded("NameplateAuraSizes")

@@ -32,7 +32,7 @@ local function disabled(get)
 end
 
 add({ type = "toggle", key = enabledKey, label = "Compact party resource bar",
-    desc = "Give each party member a resource bar that can sit below or overlap the health bar.",
+    desc = "Give each party member a resource bar that can sit below or overlap the health bar. While it's on, its own height and offsets below set the bar, in place of DaylightUI's party power height and gap.",
     blastaRequires = "party.showPower" })
 add({ type = "slider", key = "party.blastaPowerWidth", label = "Resource bar width", min = 0.2,
     max = 1, step = 0.01, unit = "%", disabled = disabled, onRelease = true,
@@ -90,12 +90,20 @@ me.Wrap(UF, "StyleDef", function(original, cfg)
     return original(cfg)
 end)
 
+-- How far the compact bar really reaches below the frame (0 when it overlaps
+-- the health bar). frame.foot keeps DaylightUI's full reservation for the
+-- layout, but the dispel glow should wrap the bar where it actually sits.
+local compactFoot = setmetatable({}, { __mode = "k" })
+
 local parts = ns.GroupParts
 if parts and parts.LayoutTargetMark and parts.Reach then
     local healthOutline
     me.Wrap(parts, "Reach", function(original, frame)
         if frame == healthOutline then return 0, 0 end
-        return original(frame)
+        local up, down = original(frame)
+        local foot = compactFoot[frame]
+        if foot then down = foot end
+        return up, down
     end)
 
     me.Wrap(parts, "LayoutTargetMark", function(original, frame, cfg)
@@ -125,6 +133,7 @@ end
 me.Wrap(power, "LayoutLine", function(layoutLine, frame, cfg, text, side, cut, show)
     local line = frame.line
     castLift[frame] = nil
+    compactFoot[frame] = nil
     if not line or frame.spec.group ~= "party" then return layoutLine(frame, cfg, text, side, cut, show) end
     edges.Clear(line)
     local shell = style.GetShell(line)
@@ -168,35 +177,12 @@ me.Wrap(power, "LayoutLine", function(layoutLine, frame, cfg, text, side, cut, s
     edges.Fill(fill, endSide, height > 0 and edgeCut * fillHeight / height or 0, frame.growLeft and left or right)
     UF.LayoutPowerExtras(frame, settings, text, nil, 0, height, true, edgeCut + 4)
     castLift[frame] = y - height + border
+    compactFoot[frame] = math.max(0, height - y)
 end)
 
 -- With the compact bar on, DaylightUI's own party power line height and the
--- gap above it do nothing (the compact bar has its own height and offsets):
--- grayed out, with a line saying why.
-local NOTE = "Blasta's compact party resource bar is on. Its own height and offsets below set this bar."
-extras.German[NOTE] = "Blastas kompakte Gruppen-Ressourcenleiste ist an. Ihre eigenen Höhen- und Versatzregler unten bestimmen diese Leiste."
-local OVERRIDDEN = { ["party.powerHeight"] = true, ["party.ribbonGap"] = true }
-for _, page in ipairs(mod.options and mod.options.pages or {}) do
-    for _, group in ipairs(page.groups or {}) do
-        for _, row in ipairs(group.items or {}) do
-            if OVERRIDDEN[row.key] and not row.blastaLocked then
-                row.blastaLocked = true
-                local own = row.disabled
-                row.disabled = function(get)
-                    return (get(enabledKey) == true and get("party.showPower") ~= false) or (own ~= nil and own(get) == true)
-                end
-                local desc = row.desc
-                row.desc = desc and (desc .. "\n\n" .. NOTE) or NOTE
-                if desc then
-                    local text = row.desc
-                    DUI.On("Login", function()
-                        rawset(DUI.L, text, (rawget(DUI.L, desc) or desc) .. "\n\n" .. extras.Translate(NOTE))
-                    end)
-                end
-            end
-        end
-    end
-end
+-- gap above it do nothing (the compact bar has its own height and offsets).
+-- DaylightUI's rows stay as they are; Blasta's card says so.
 
 -- Design mode: in DaylightUI's party preview the compact bar drags like a
 -- native piece; dropping it sets its horizontal and vertical offsets.
@@ -225,3 +211,5 @@ function extras.AddPartyPowerMove(preview, parts)
         end
     end
 end
+
+extras.Loaded("PartyPowerBar")

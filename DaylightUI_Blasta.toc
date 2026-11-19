@@ -1,8 +1,8 @@
 ## Interface: 16001
-## Title: Daylight |cff4c92ffB|r|cff34bcedl|r|cff1be7daa|r|cff36fdb8s|r|cff85fe85t|r|cffd3ff52a|r
+## Title: |cff4c92ffB|r|cff34bcedl|r|cff1be7daa|r|cff36fdb8s|r|cff85fe85t|r|cffd3ff52a|r (DaylightUI Plugin)
 ## Notes: Additional settings and interface refinements for DaylightUI.
 ## Notes-deDE: Zusätzliche Einstellungen und UI-Anpassungen für DaylightUI.
-## Version: 1.8.0
+## Version: 1.9.0
 ## X-License: GPL-3.0-or-later
 ## SavedVariables: DaylightBlastaLanguage, DaylightBlastaLoginMessage, DaylightBlastaIntroAtLogin, DaylightBlastaIntroAtReload
 ## IconTexture: Interface\AddOns\DaylightUI_Blasta\Media\DaylightExtras.tga
@@ -54,9 +54,24 @@ Extras\InteractionCast.lua
 Extras\BagsOrganize.lua
 Extras\CharacterStats.lua
 Extras\CharacterPanel.lua
+Extras\CharacterLayout.lua
 Extras\ProfessionTabs.lua
 Extras\CraftShine.lua
 Extras\RecipeChance.lua
+Data\Recipes\FirstAid.lua
+Data\Recipes\Mining.lua
+Data\Recipes\Cooking.lua
+Data\Recipes\Skinning.lua
+Data\Recipes\Herbalism.lua
+Data\Recipes\Blacksmithing.lua
+Data\Recipes\Fishing.lua
+Data\Recipes\Alchemy.lua
+Data\Recipes\Leatherworking.lua
+Data\Recipes\Tailoring.lua
+Data\Recipes\Enchanting.lua
+Data\Recipes\Engineering.lua
+Extras\TrainerRecipes.lua
+Extras\ProfessionOverview.lua
 Extras\AuraReminder.lua
 WorldMap.lua
 Extras\TravelRoutes.lua
@@ -67,6 +82,8 @@ NameplateBorders.lua
 Extras\NameplateShape.lua
 Extras\NameplateAuraMotion.lua
 Extras\NameplateAuraSizes.lua
+Extras\DesignParts.lua
+Extras\InterruptHint.lua
 NameplateNames.lua
 BagBorders.lua
 ActionBarPixels.lua
@@ -75,5 +92,7 @@ Extras\RageNeed.lua
 Extras\BarFxPresets.lua
 Extras\Report.lua
 ChannelTicks.lua
+Extras\Compat.lua
+Extras\SidePanel.lua
 Imported\Core.lua
 Imported\Options.lua

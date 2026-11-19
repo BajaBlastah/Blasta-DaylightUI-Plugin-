@@ -178,3 +178,5 @@ function extras.AddPartyPortraitMove(preview, parts)
         end
     end
 end
+
+extras.Loaded("PartyPortraits")

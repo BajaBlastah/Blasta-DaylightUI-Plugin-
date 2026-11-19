@@ -82,3 +82,5 @@ hooksecurefunc(UF, "UpdateStatus", function(frame, sample)
         end
     end
 end)
+
+extras.Loaded("PortraitIconOffsets")

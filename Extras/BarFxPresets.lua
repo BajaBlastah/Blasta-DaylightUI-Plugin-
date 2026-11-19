@@ -388,6 +388,55 @@ BarFx.Add("blastaclass", label("blastaclass", "By class (Blasta)"), {
     kick = function(s, p, dir, size) if p.inner.kick then p.inner.kick(s, p.piece, dir, size) end end,
 })
 
+-- Blasta's presets are picked on Blasta's own pages ("Blasta animation" on
+-- each bar's card there), not in DaylightUI's "Bar animation" choice: they
+-- stay registered (BarFx.STYLES, BarFx.DEFS), so bars can wear them, but
+-- leave DaylightUI's list (BarFx.ORDER). Each bar keeps its pick next to its
+-- own settings (base .. ".blastaStyle"); while one is set it plays instead of
+-- DaylightUI's.
+local OWN_KEY = "blastaStyle"
+local OWN, ownOrder = {}, {}
+do
+    local kept = {}
+    for _, key in ipairs(BarFx.ORDER) do
+        if labels[key] then OWN[key] = true; ownOrder[#ownOrder + 1] = key else kept[#kept + 1] = key end
+    end
+    for i = #BarFx.ORDER, 1, -1 do BarFx.ORDER[i] = nil end
+    for i, key in ipairs(kept) do BarFx.ORDER[i] = key end
+end
+local OFF_LABEL = "Off: DaylightUI's animation"
+if extras.German then extras.German[OFF_LABEL] = "Aus: DaylightUIs Animation" end
+local function ownChoices()
+    local values, order = { none = extras.Translate(OFF_LABEL) }, { "none" }
+    for _, key in ipairs(ownOrder) do values[key] = BarFx.STYLES[key]; order[#order + 1] = key end
+    return values, order
+end
+local function ownStyle(s)
+    if s.force then return nil end
+    local own = BarFx.Get(s, OWN_KEY)
+    if OWN[own] and DUI.Motion and DUI.Motion.On and DUI.Motion.On() then return own end
+end
+
+-- Bars that wore a Blasta preset from DaylightUI's list before: the pick
+-- moves to Blasta's own setting, DaylightUI's goes back to none.
+local function movePicks()
+    for name, paths in pairs(BarFx.HOMES or {}) do
+        local mod = DUI:GetModule(name)
+        local db = mod and mod.db
+        if type(db) == "table" then
+            for _, path in ipairs(paths) do
+                local t = DUI.DB.GetPath(db, path)
+                if type(t) == "table" and OWN[t.style] then
+                    if not OWN[t[OWN_KEY]] then t[OWN_KEY] = t.style end
+                    t.style = "none"
+                end
+            end
+        end
+    end
+    if BarFx.Refresh then pcall(BarFx.Refresh) end
+end
+DUI.On("Login", movePicks)
+
 -- A new target, focus or group can put another player's class on a bar.
 -- Many nameplates can appear in one frame: one recheck per frame is enough.
 local recheckQueued
@@ -436,7 +485,7 @@ end
 
 local pick = BarFx.Pick
 BarFx.Pick = function(s)
-    local style = pick(s)
+    local style = ownStyle(s) or pick(s)
     if style and not fighting and sampling == 0 and not samples[s.bar] and BarFx.Get(s, COMBAT_KEY) == true then
         return nil
     end
@@ -453,8 +502,16 @@ end
 DUI.RegisterEvent("PLAYER_REGEN_DISABLED", combat(true))
 DUI.RegisterEvent("PLAYER_REGEN_ENABLED", combat(false))
 
--- The toggle row, after each bar's "Animation strength". Called before
--- Blasta sorts Daylight's pages, so the rows get the Blasta badge.
+-- Blasta's rows on each bar's animation card, after its "Animation
+-- strength": the card's live sample, the Blasta animation, the speed,
+-- strength and colors it plays with (the same settings as DaylightUI's rows)
+-- and "Only in combat". Blasta's menu takes them from there
+-- (extras.CollectSettings), so DaylightUI's card stays as it is.
+local function copyRow(row)
+    local copy = {}
+    for k, v in pairs(row) do copy[k] = v end
+    return copy
+end
 function extras.PlaceBarFxCombat()
     for name, paths in pairs(BarFx.HOMES or {}) do
         local mod = DUI:GetModule(name)
@@ -467,18 +524,55 @@ function extras.PlaceBarFxCombat()
                 while i <= #items do
                     local row = items[i]
                     local base = type(row.key) == "string" and row.key:match("^(.+)%.strength$")
-                    if base and homes[base] and row.type == "slider" then
-                        local key = base .. "." .. COMBAT_KEY
+                    if base and homes[base] and row.type == "slider" and not row.blastaCopy then
+                        local key, ownKey = base .. "." .. COMBAT_KEY, base .. "." .. OWN_KEY
                         if mod.defaults and DUI.DB.GetPath(mod.defaults, key) == nil then
                             DUI.DB.SetPath(mod.defaults, key, false)
                         end
-                        if not (items[i + 1] and items[i + 1].key == key) then
-                            table.insert(items, i + 1, { type = "toggle", key = key, label = "Only in combat",
-                                desc = "The animation plays only while you're in a fight. Outside one the bar rests. The preview above always moves.",
-                                hidden = row.hidden, disabled = row.disabled, inPick = row.inPick,
-                                baseHidden = row.baseHidden, blastaJumpAnchor = row.key })
+                        if mod.defaults and DUI.DB.GetPath(mod.defaults, ownKey) == nil then
+                            DUI.DB.SetPath(mod.defaults, ownKey, "none")
                         end
-                        i = i + 2
+                        if not (items[i + 1] and items[i + 1].blastaBarFx == base) then
+                            local function find(k)
+                                for _, r in ipairs(items) do if r.key == k and not r.blastaCopy then return r end end
+                            end
+                            local styleRow = find(base .. ".style")
+                            local function off(get)
+                                return (get(base .. ".style") or "none") == "none" and not OWN[get(ownKey)]
+                            end
+                            local add = {}
+                            for _, r in ipairs(items) do
+                                if r.type == "custom" and r.lockWith == base .. ".style" and not r.blastaCopy then
+                                    local c = copyRow(r)
+                                    c.blastaCopy = true
+                                    add[#add + 1] = c
+                                    break
+                                end
+                            end
+                            add[#add + 1] = { type = "dropdown", key = ownKey, label = "Blasta animation",
+                                choices = ownChoices, inPick = row.inPick, baseHidden = row.baseHidden,
+                                hidden = styleRow and styleRow.hidden, disabled = styleRow and styleRow.disabled,
+                                desc = "One of Blasta's animations for this bar, in place of DaylightUI's. Speed, strength and colors below go for both. Needs Motion effects.",
+                                blastaBarFx = base, blastaCopy = true, blastaOwn = true }
+                            for _, field in ipairs({ "speed", "strength", "colors", "colorA", "colorB" }) do
+                                local r = find(base .. "." .. field)
+                                if r then
+                                    local c = copyRow(r)
+                                    local hidden = r.hidden
+                                    c.blastaCopy, c.disabled = true, off
+                                    c.hidden = hidden
+                                    add[#add + 1] = c
+                                end
+                            end
+                            add[#add + 1] = { type = "toggle", key = key, label = "Only in combat",
+                                desc = "The animation plays only while you're in a fight. Outside one the bar rests. The preview above always moves.",
+                                hidden = row.hidden, disabled = off, inPick = row.inPick,
+                                baseHidden = row.baseHidden, blastaCopy = true, blastaOwn = true }
+                            for n, r in ipairs(add) do table.insert(items, i + n, r) end
+                            i = i + #add + 1
+                        else
+                            i = i + 1
+                        end
                     else
                         i = i + 1
                     end
@@ -487,3 +581,5 @@ function extras.PlaceBarFxCombat()
         end
     end
 end
+
+extras.Loaded("BarFxPresets")

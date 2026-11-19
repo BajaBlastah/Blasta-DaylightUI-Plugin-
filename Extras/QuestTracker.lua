@@ -25,3 +25,5 @@ end
 
 -- The quest level beside the title is DaylightUI's own now ("Quest levels in
 -- the tracker" and "Show quest levels in the quest log").
+
+extras.Loaded("QuestTracker")

@@ -839,30 +839,6 @@ if german then
         "Der Blasta-Beutefeed ist an. Schalte „Blasta-Beutefeed verwenden“ aus, um diesen zu nutzen."
 end
 
--- DaylightUI's own loot feed switch is grayed out while Blasta's feed runs.
-for _, page in ipairs(qos.options and qos.options.pages or {}) do
-    for _, group in ipairs(page.groups or {}) do
-        for _, row in ipairs(group.items or {}) do
-            if row.key == "lootFeed" and row.type == "toggle" and not row.blastaLocked then
-                row.blastaLocked = true
-                local disabled = row.disabled
-                row.disabled = function(get)
-                    return blastaEnabled() or (disabled ~= nil and disabled(get) == true)
-                end
-                local note = "Blasta's loot feed is on. Turn off \"Use Blasta loot feed\" to use this one."
-                local own = row.desc
-                row.desc = own and (own .. "\n\n" .. note) or note
-                -- Daylight translates the whole text as one key: give it one.
-                if own then
-                    local text = row.desc
-                    DUI.On("Login", function()
-                        rawset(DUI.L, text, (rawget(DUI.L, own) or own) .. "\n\n" .. T(note))
-                    end)
-                end
-            end
-        end
-    end
-end
 
 local function testFeed()
     if blastaEnabled() then
@@ -983,3 +959,5 @@ function extras.LootFeedPage()
     end
     return { id = "blastaLoot", label = "Loot feed", groups = groups }
 end
+
+extras.Loaded("LootFeed")

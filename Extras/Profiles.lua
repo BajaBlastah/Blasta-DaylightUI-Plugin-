@@ -113,3 +113,5 @@ function extras.ProfileTransferPage()
         } },
     } }
 end
+
+extras.Loaded("Profiles")

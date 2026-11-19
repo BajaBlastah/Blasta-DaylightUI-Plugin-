@@ -53,3 +53,5 @@ DUI.On("SettingChanged", function(scope, path)
         refresh()
     end
 end)
+
+extras.Loaded("MirrorTimers")

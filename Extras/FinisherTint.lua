@@ -6,7 +6,56 @@ local unitFrames = DUI:GetModule("UnitFrames")
 if not (unitFrames and unitFrames.defaults and unitFrames.defaults.colors
     and extras.FindSetting(unitFrames, "colors.dotTint")
     and dots and dots.Paint and dots.LayoutVeil and dots.NewVeil and dots.TintVeil
-    and type(dots.LeftByType) == "function") then return end
+    and dots.Left and dots.KeyOf and dots.Parse and dots.PATTERNS) then return end
+
+-- DaylightUI 1.9.4 no longer splits the damage left by kind (Dots.LeftByType),
+-- so Blasta keeps its own small record of your finishers: the player's casts
+-- stay readable, the description gives total and duration, and the damage
+-- still to come is the share of the time left. It never exceeds what
+-- DaylightUI says all your DoTs on the mob will still deal.
+local finishers = {} -- mob key -> { [spell id] = { total, from, to } }
+local function recordFinisher(id)
+    local okD, desc = pcall(C_Spell.GetSpellDescription, id)
+    if not okD or type(desc) ~= "string" or (issecretvalue and issecretvalue(desc)) then return end
+    if not string.find(desc, dots.PATTERNS.finisher) then return end
+    local points = dots.Combo and dots.Combo(id)
+    local total, _, duration = dots.Parse(desc, points)
+    local key = dots.KeyOf("target")
+    if not (total and duration and duration > 0 and key) then return end
+    local now = GetTime()
+    finishers[key] = finishers[key] or {}
+    finishers[key][id] = { total = total, from = now, to = now + duration }
+end
+
+local function finisherLeft(unit)
+    local total = dots.Left(unit)
+    local key = dots.KeyOf(unit)
+    local list = key and finishers[key]
+    if not total then
+        if key then finishers[key] = nil end
+        return nil
+    end
+    if not list then return total, 0 end
+    local now, left = GetTime(), 0
+    for id, f in pairs(list) do
+        if now >= f.to then list[id] = nil
+        else left = left + f.total * (f.to - now) / (f.to - f.from) end
+    end
+    if not next(list) then finishers[key] = nil end
+    return total, math.min(total, math.floor(left + 0.5))
+end
+
+local own = type(dots.LeftByType) == "function" and dots.LeftByType or finisherLeft
+if own == finisherLeft then
+    local watch = CreateFrame("Frame")
+    watch:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+    watch:SetScript("OnEvent", function(_, _, _, _, id)
+        if type(id) == "number" and DUI:Get("UnitFrames", "colors.blastaFinisherTintEnabled") == true then
+            pcall(recordFinisher, id)
+        end
+    end)
+    if dots.Forget then hooksecurefunc(dots, "Forget", function() finishers = {} end) end
+end
 
 local toggleKey, colorKey = "colors.blastaFinisherTintEnabled", "colors.blastaFinisherTint"
 local defaultColor = { 0.85, 0.26, 0.12, 0.75 }
@@ -61,7 +110,7 @@ end
 function dots.Paint(unit, veil, skull)
     local state = veil and states[veil]
     local total, finisher
-    if state and unit and enabled() then total, finisher = dots.LeftByType(unit) end
+    if state and unit and enabled() then total, finisher = own(unit) end
     if not total or not finisher or finisher <= 0 then
         restore(veil, state)
         return paint(unit, veil, skull)
@@ -109,3 +158,5 @@ end
 DUI.On("SettingChanged", function(scope, key)
     if scope == "UnitFrames" and (key == toggleKey or key == colorKey) then DUI.Fire("DotsChanged") end
 end)
+
+extras.Loaded("FinisherTint")

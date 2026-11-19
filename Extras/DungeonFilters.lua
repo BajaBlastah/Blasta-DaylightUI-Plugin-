@@ -18,7 +18,7 @@ end
 
 extras.DungeonFinderGroup = { label = "Blasta Dungeon Finder", items = {
     { type = "toggle", key = setting, label = "Blasta Dungeon Finder", reload = true,
-        desc = "Enable the docked dungeon filters in DaylightUI's group finder, and show groups and solo players side by side when the window is wide enough.",
+        desc = "Enable the docked dungeon filters in DaylightUI's group finder: several dungeons, open roles, who is already in the group, level ranges and one-click applying.",
         get = enabled, set = function(value) return DUI:Set(ADDON, setting, value) end,
         default = function() return false end },
 } }
@@ -30,29 +30,6 @@ function data.PlaystyleWord(id)
         return "Mitziehen"
     end
     return native
-end
-
-local listing = lfg.Listing
-if listing and listing.Build and listing.Render then
-    local function watchWidth(page)
-        local lastWidth
-        local pending
-        page:HookScript("OnSizeChanged", function(_, newWidth)
-            if type(newWidth) ~= "number" or pending or not page:IsVisible() or newWidth == lastWidth then return end
-            local goal = page.win and page.win.goalW
-            if goal and math.abs(newWidth - goal) > 0.5 then return end
-            pending = true
-            C_Timer.After(0, function()
-                pending = false
-                if not page:IsVisible() or lastWidth == page:GetWidth() then return end
-                lastWidth = page:GetWidth()
-                listing.Render(page)
-                if listing.FitNote then listing.FitNote() end
-            end)
-        end)
-    end
-    if listing.page then watchWidth(listing.page) end
-    hooksecurefunc(listing, "Build", watchWidth)
 end
 
 -- ---------------------------------------------------------------------
@@ -430,187 +407,10 @@ hooksecurefunc(browse, "PaintChips", function(page)
     paintDrawer()
 end)
 
--- ---------------------------------------------------------------------
--- Two columns: groups on the left, solo players on the right
--- ---------------------------------------------------------------------
-
-local Parts = win.Parts
-local L = DUI.L
-local card = DUI.Social and DUI.Social.Detail
-local TWO_MIN = 600   -- list width (without the detail card) from which two columns fit
-local COLUMN_GAP = 20 -- room between the columns, the left one's scroll bar sits in it
-local twoColumns = Parts and Parts.Stack and Parts.Hex and card and card.REST
-    and lfg.Rows and lfg.Rows.Row and lfg.Rows.Named and lfg.Rows.Badges and lfg.Rows.Age
-    and lfg.Rows.Tip and lfg.Rows.Menu and browse.Seek and browse.PaintDetail and browse.Toggle
-    and browse.Width and data.ROLES and data.ROLE_KEY and data.Entry and data.CanInvite
-
--- DaylightUI's role squares above the list (Browse.need), as in Browse.lua.
-local function wanted(r)
-    if next(browse.need or {}) == nil or r.mine then return true end
-    if r.solo then
-        local can = r.roles or {}
-        for role in pairs(browse.need) do if can[data.ROLE_KEY[role]] then return true end end
-        return false
-    end
-    local _, open = data.Places(r)
-    for role in pairs(browse.need) do if (open[role] or 0) > 0 then return true end end
-    return false
-end
-
--- One listing, built the way Browse.lua builds its rows.
-local function rowOf(s, r)
-    local Rows = lfg.Rows
-    local who = Rows.Named(r.leader.name, r.leader.class)
-    local sub = who
-    local hex = Parts.Hex
-    if type(r.leader.level) == "number" then sub = sub .. "  " .. hex({ style.Accent() }) .. r.leader.level .. "|r" end
-    if r.leader.zone then sub = sub .. "  ·  " .. hex(style.INK.WARN) .. r.leader.zone .. "|r" end
-    if r.style then sub = sub .. "  ·  " .. hex(r.styleInk or style.INK.LABEL) .. r.style .. "|r" end
-    return Rows.Row(s, { kind = "group", height = r.note and Rows.GROUP_NOTE or Rows.GROUP, result = r, sep = true,
-        text = r.mine and (L["Your listing"] .. ": " .. r.text) or r.text,
-        color = style.INK.VALUE,
-        sub = sub, note = r.note, roles = Rows.Badges(r), age = Rows.Age(r.age), dim = r.delisted,
-        picked = browse.open == r.id,
-        onEnter = function(b) Rows.Tip(b, r) end,
-        onClick = function() browse.Toggle(r.id) end,
-        onMenu = function(b) if not r.mine then Rows.Menu(b, r.leader.name, data.CanInvite(r)) end end })
-end
-
-local function wide(page)
-    return page.stack:Width() >= TWO_MIN
-end
-
-local function columns(page)
-    if page.blastaColumns then return page.blastaColumns[1], page.blastaColumns[2] end
-    local main = page.stack
-    local function make(left)
-        local s = Parts.Stack(page, { top = browse.TOP, bottom = card.REST })
-        s.scroll:ClearAllPoints()
-        if left then
-            s.scroll:SetPoint("TOPLEFT", main.scroll, "TOPLEFT", 0, 0)
-            s.scroll:SetPoint("BOTTOMRIGHT", main.scroll, "BOTTOM", -COLUMN_GAP / 2, 0)
-        else
-            s.scroll:SetPoint("TOPLEFT", main.scroll, "TOP", COLUMN_GAP / 2, 0)
-            s.scroll:SetPoint("BOTTOMRIGHT", main.scroll, "BOTTOMRIGHT", 0, 0)
-        end
-        -- Half of what the full list would get, including a resize still under way.
-        function s.Width() return math.max(1, math.floor((main:Width() - COLUMN_GAP) / 2)) end
-        s.scroll:Hide()
-        return s
-    end
-    local left, right = make(true), make(false)
-    page.blastaColumns = { left, right }
-    -- A resize drag only stretches rows (Lfg.Resized): stretch both columns too, and
-    -- switch between one and two columns as soon as the width crosses the line.
-    local stretch = main.Stretch
-    local flipping = false
-    function main.Stretch(self, ...)
-        stretch(self, ...)
-        if page.blastaTwo then left:Stretch(); right:Stretch() end
-        if not flipping and wide(page) ~= (page.blastaTwo == true) then
-            flipping = true
-            C_Timer.After(0, function()
-                flipping = false
-                if page:IsVisible() then browse.Render(page, true) end
-            end)
-        end
-    end
-    return left, right
-end
-
--- Shows the columns in place of DaylightUI's single list, or gives it back.
-local function useColumns(page, on)
-    if (page.blastaTwo == true) == on then return end
-    local left, right = columns(page)
-    local main = page.stack
-    page.blastaTwo = on or nil
-    if on then
-        main:Begin()
-        main:End()
-        page.blastaWheel = main.scroll:IsMouseWheelEnabled()
-        main.scroll:EnableMouseWheel(false)
-        left.scroll:Show()
-        right.scroll:Show()
-    else
-        for _, s in ipairs({ left, right }) do
-            s:Begin()
-            s:End()
-            s.scroll:Hide()
-        end
-        main.scroll:EnableMouseWheel(page.blastaWheel ~= false)
-    end
-end
-
-local function twoRender(page, keep)
-    browse.PaintChips(page)
-    local left, right = columns(page)
-    useColumns(page, true)
-    local atLeft, atRight = keep and left:Scrolled() or 0, keep and right:Scrolled() or 0
-    left:Begin()
-    right:Begin()
-    browse.shown, browse.rowList = {}, {}
-    local list = browse.searching and {} or (browse.results or {})
-    local groups, solo = {}, {}
-    -- Delisted: the last search still includes the player's listing until the next one.
-    local listed = data.Entry() ~= nil
-    for _, r in ipairs(list) do
-        if browse.act and not tContains(r.acts, browse.act) then
-            -- not the selected activity
-        elseif not wanted(r) then
-            -- not a role asked for
-        elseif r.mine and not listed then
-            if browse.open == r.id then browse.open = nil end
-        else
-            local into = r.solo and solo or groups
-            if r.mine then table.insert(into, 1, r) else into[#into + 1] = r end
-        end
-    end
-    local ready = browse.searched and browse.cat and not browse.searching and not browse.failed
-    local function fill(s, label, items, empty)
-        if ready or #items > 0 then
-            s:Section(label .. "  " .. #items)
-            for _, r in ipairs(items) do
-                browse.shown[r.id] = r
-                browse.rowList[#browse.rowList + 1] = rowOf(s, r)
-            end
-            if #items == 0 then s:Text(empty, { color = style.INK.LABEL }) end
-        end
-        return s:End()
-    end
-    local leftPieces = fill(left, L["Groups"], groups, T("No groups match."))
-    local rightPieces = fill(right, L["Solo players"], solo, T("No players match."))
-    -- Lift in side by side.
-    local pieces = {}
-    for i = 1, math.max(#leftPieces, #rightPieces) do
-        if leftPieces[i] then pieces[#pieces + 1] = leftPieces[i] end
-        if rightPieces[i] then pieces[#pieces + 1] = rightPieces[i] end
-    end
-    page.pieces = pieces
-    if browse.fresh then win.Feel.Stagger(pieces, 0) end
-    browse.fresh = nil
-    if browse.open and not browse.shown[browse.open] then browse.open = nil end
-    local note
-    if browse.searching then note = L["Searching..."]
-    elseif browse.failed then note = L["The search failed. Try Refresh."]
-    elseif not browse.cat then note = L["Nothing to find at your level yet."]
-    elseif #list == 0 and not browse.searched then note = L["Pick a category to look for groups."] end
-    page.note:SetText(note or "")
-    page.note:SetShown(note ~= nil)
-    browse.Seek(page, browse.searching == true)
-    left:ScrollTo(atLeft)
-    right:ScrollTo(atRight)
-    browse.PaintDetail()
-end
-
+-- Groups and solo players side by side: DaylightUI does that itself now
+-- (Browse.SPLIT_W, the window's resize grip). Blasta only filters the list.
 local render = browse.Render
-local function draw(page, ...)
-    page = page or browse.page
-    if twoColumns and page and page.stack then
-        if wide(page) then return twoRender(page, ...) end
-        if page.blastaTwo then useColumns(page, false) end
-    end
-    return render(page, ...)
-end
+local function draw(page, ...) return render(page, ...) end
 
 function browse.Render(page, ...)
     if not enabled() then return render(page, ...) end
@@ -645,104 +445,10 @@ function browse.Render(page, ...)
         drawer.count:SetText(browse.searching and DUI.L["Searching..."]
             or T("%d groups found"):format(groups) .. "  ·  " .. T("%d players"):format(players))
     end
-    if active and not page.blastaTwo and #filtered == 0 and not browse.searching and not browse.failed and browse.searched then
+    if active and #filtered == 0 and not browse.searching and not browse.failed and browse.searched then
         page.note:SetText(T("No groups match these filters"))
         page.note:Show()
     end
-end
-
--- ---------------------------------------------------------------------
--- Window width: Find a group opens wide enough for two columns
--- ---------------------------------------------------------------------
-
-local lfgWindow = lfg.Window
-local WIDE = 840   -- window width the Find a group page opens at, before a card opens
-
-local function savedWidth()
-    local w = tonumber(DUI:Get(ADDON, "finderWidth"))
-    if w then return math.max(lfgWindow.W or 460, w) end
-    return WIDE
-end
-
-local function cardRoom()
-    return lfgWindow.side and lfgWindow.side.find and lfgWindow.Span and lfgWindow.Span() or 0
-end
-
-local function findWidth() return savedWidth() + cardRoom() end
-
--- Find a group keeps its own width, so List yourself and Who keep theirs. The height
--- stays shared with them, as in DaylightUI.
-local function widenWindow()
-    local f = lfgWindow and lfgWindow.frame
-    if not (twoColumns and f and enabled()) or f.blastaWide then return end
-    f.blastaWide = true
-    local def = f.defs and f.defs.find
-    if def then def.w = findWidth() end
-    local userSize = f.userSize
-    if userSize then
-        f.userSize = function(id)
-            local w, h = userSize(id)
-            if id == "find" then return findWidth(), h or lfgWindow.H end
-            return w, h
-        end
-    end
-    local sizer = lfgWindow.sizer
-    if sizer and sizer.Size then
-        local size = sizer.Size
-        function sizer.Size(id)
-            local w, h = size(id)
-            if id == "find" then w = findWidth() end
-            return w, h
-        end
-    end
-    if lfgWindow.SetSide then
-        hooksecurefunc(lfgWindow, "SetSide", function(id)
-            if id == "find" and f.defs and f.defs.find then f.defs.find.w = findWidth() end
-        end)
-    end
-    local function reopen()
-        C_Timer.After(0, function()
-            if f.current == "find" and win.IsOpen and win.IsOpen(f) and lfgWindow.ShowTab then lfgWindow.ShowTab("find") end
-        end)
-    end
-    -- A drag on Find a group saves its width for Blasta and leaves DaylightUI's
-    -- shared width as it was. Right-click on the grip resets it.
-    local grip = f.grip
-    if grip then
-        local before
-        grip:HookScript("OnMouseDown", function(_, button)
-            before = nil
-            if button ~= "LeftButton" or f.current ~= "find" then return end
-            local db = lfg.module and lfg.module.db
-            local s = db and type(db.sizes) == "table" and db.sizes.all
-            before = { width = type(s) == "table" and s[1] or nil }
-        end)
-        grip:HookScript("OnMouseUp", function(_, button)
-            if f.current ~= "find" then before = nil return end
-            if button == "RightButton" then
-                DUI:Set(ADDON, "finderWidth", nil)
-                reopen()
-                return
-            end
-            if not before then return end
-            DUI:Set(ADDON, "finderWidth", math.floor((f:GetWidth() or WIDE) - cardRoom() + 0.5))
-            local db = lfg.module and lfg.module.db
-            local s = db and type(db.sizes) == "table" and db.sizes.all
-            if type(s) == "table" then s[1] = before.width or lfgWindow.W or s[1] end
-            before = nil
-        end)
-    end
-    if DUI.Movers and DUI.Movers.onResetAll then
-        table.insert(DUI.Movers.onResetAll, function()
-            DUI:Set(ADDON, "finderWidth", nil)
-            reopen()
-        end)
-    end
-end
-
-if twoColumns and lfgWindow then
-    if lfgWindow.Build then hooksecurefunc(lfgWindow, "Build", widenWindow) end
-    widenWindow()
 end
 
 -- ---------------------------------------------------------------------
@@ -867,3 +573,5 @@ local function plainCard()
 end
 
 if type(browse.PaintDetail) == "function" then hooksecurefunc(browse, "PaintDetail", plainCard) end
+
+extras.Loaded("DungeonFilters")

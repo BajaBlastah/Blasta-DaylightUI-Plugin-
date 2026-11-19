@@ -291,3 +291,5 @@ function Auras.DrawSample(c, list, count, kind, flow)
     end
     return drawSample(c, list, count, kind, flow)
 end
+
+extras.Loaded("AuraFit")

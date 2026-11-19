@@ -324,3 +324,5 @@ extras.AddSetting(qol, detailKey, {
     type = "button", key = "blastaAfkPreview", label = "Preview the Blasta AFK screen",
     text = "Preview", func = preview, blastaDestination = destination,
 })
+
+extras.Loaded("AfkScreen")

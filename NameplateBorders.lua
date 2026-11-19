@@ -90,3 +90,5 @@ for _, page in ipairs(pages) do
         end
     end
 end
+
+blasta.Loaded("NameplateBorders")

@@ -81,3 +81,4 @@ hooksecurefunc(UF, "UpdateStatus", function(frame)
     end
 end)
 
+extras.Loaded("LevelBadges")

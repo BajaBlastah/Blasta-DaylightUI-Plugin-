@@ -1,4 +1,4 @@
--- Daylight Blasta: registers the plugin, its settings and the /blasta command with DaylightUI.
+-- Blasta (DaylightUI Plugin): registers the plugin, its settings and the /blasta command with DaylightUI.
 -- A plugin: it runs on top of DaylightUI through DaylightUI.API only (see DaylightUI's API.md).
 -- Blasta no longer skins other addons; AddonSkins by Glowey_ does that.
 
@@ -48,19 +48,12 @@ local function stylePluginMenu()
 		if not (nav and nav.listTitle and nav.sectionButtons and nav.pageButtons and nav.Layout) then return nav end
 		local layout = nav.Layout
 		local title = nav.listTitle
-		local enlargedSize, normalSize
 		function nav.Layout(state)
 			layout(state)
-			local font, size, flags = title:GetFont()
+			-- The section heading: just "Blasta" in its colors, at DaylightUI's
+			-- own size (DaylightUI leaves the "(DaylightUI Plugin)" tag out here).
 			if state.section == sectionID then
-				if font and size ~= enlargedSize then
-					normalSize, enlargedSize = size, size + 2
-					title:SetFont(font, enlargedSize, flags)
-				end
-				title:SetText(ns.BlastaGradient(title:GetText() or "Daylight Blasta"))
-			elseif font and normalSize and size == enlargedSize then
-				title:SetFont(font, normalSize, flags)
-				enlargedSize = nil
+				title:SetText(ns.BlastaGradient("Blasta"))
 			end
 			local button = nav.sectionButtons[sectionID]
 			if button and button.text then button.text:SetText(ns.BlastaGradient("Blasta")) end
@@ -86,10 +79,10 @@ function ns.RegisterSettings(pages)
 	defaults.experienceStyle = ns.ExperienceDefaults
 	defaults.squareSpellbookIcons = false
 	defaults.characterPanel = ns.CharacterPanelDefaults
-	defaults.mapZoneLevels = true
 	defaults.zoneTitleExtras = ns.ZoneTitleExtrasDefaults
 	defaults.dispelOverlay = false
 	defaults.dungeonFinder = false
+	defaults.compatNotice = ""
 	defaults.blastaBags = false
 	defaults.blastaLoot = ns.LootFeedDefaults
 	defaults.rageNeed = ns.RageNeedDefaults

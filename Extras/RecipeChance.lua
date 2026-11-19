@@ -39,3 +39,5 @@ end
 DUI.On("SettingChanged", function(scope, path)
     if scope == mod.name and path == key then window.Refill() end
 end)
+
+extras.Loaded("RecipeChance")

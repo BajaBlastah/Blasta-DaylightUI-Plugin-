@@ -8,7 +8,8 @@ if not (parts and parts.CreateDispel and parts.LayoutDispel and parts.CreateGlow
 
 local key = "dispelOverlay"
 local onlyMineKey = "blastaDispelOnlyMine"
-local active, onlyMine, selected = false, false, {}
+local usableKey = "blastaDispelUsable"
+local active, onlyMine, onlyUsable, selected = false, false, false, {}
 local function enabled() return active == true end
 local function readable(value)
     return not (issecretvalue and issecretvalue(value))
@@ -42,10 +43,24 @@ end
 local setting = toggle(key, "Blasta dispel highlight", false)
 setting.desc = "Show a pulsing border and glow in the dispel type color."
 local items = { setting }
-local onlyMineSetting = toggle(onlyMineKey, "Only mine", false)
-onlyMineSetting.desc = "Show dispel highlights only for effects your character can remove."
+-- The dispel hint: only what your class removes (the client picks those),
+-- and only while you can cast it (not in a form that can't, not out of mana).
+local VERSION = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version") or nil
+local onlyMineSetting = toggle(onlyMineKey, "Only what you can remove", true)
+onlyMineSetting.desc = "Lights up only effects your class can remove, in their dispel type color."
 onlyMineSetting.disabled = function() return not setting.get() end
 items[#items + 1] = onlyMineSetting
+local usableSetting = toggle(usableKey, "Only while you can cast it", true)
+usableSetting.desc = "Hides the highlight while your dispel can't be cast right now: in a form without it, silenced or out of mana."
+usableSetting.blastaSince = VERSION
+usableSetting.disabled = function() return not (setting.get() and onlyMineSetting.get()) end
+items[#items + 1] = usableSetting
+extras.German["Only what you can remove"] = "Nur was du entfernen kannst"
+extras.German["Lights up only effects your class can remove, in their dispel type color."] =
+    "Hebt nur Effekte hervor, die deine Klasse entfernen kann, in der Farbe ihres Typs."
+extras.German["Only while you can cast it"] = "Nur wenn du bannen kannst"
+extras.German["Hides the highlight while your dispel can't be cast right now: in a form without it, silenced or out of mana."] =
+    "Blendet die Hervorhebung aus, solange du deinen Bannzauber gerade nicht wirken kannst: in einer Gestalt ohne ihn, zum Schweigen gebracht oder ohne Mana."
 for _, scope in ipairs(scopes) do
     local row = toggle("dispelFrames." .. scope[1], scope[2], scope[3])
     row.disabled = function() return not setting.get() end
@@ -260,6 +275,30 @@ local function knowsOffensiveDispel()
     return false
 end
 
+-- Your friendly dispels, by class (every rank this client has).
+local FRIENDLY_DISPELS = {
+    PRIEST = { 527, 988, 528, 552 }, PALADIN = { 1152, 4987 }, DRUID = { 2782, 8946, 2893 },
+    SHAMAN = { 526, 2870 }, MAGE = { 475 }, WARLOCK = { 19505, 19731, 19734, 19736 },
+}
+local canCast = true
+local function updateUsable()
+    local _, class = UnitClass("player")
+    local list = FRIENDLY_DISPELS[class]
+    if not list then canCast = true; return end
+    local any, usable = false, false
+    for _, id in ipairs(list) do
+        local known = (IsSpellKnown and (IsSpellKnown(id) or IsSpellKnown(id, true))) or false
+        if known then
+            any = true
+            local ok, can = false, nil
+            if C_Spell and C_Spell.IsSpellUsable then ok, can = pcall(C_Spell.IsSpellUsable, id)
+            elseif IsUsableSpell then ok, can = pcall(IsUsableSpell, id) end
+            if not ok or not readable(can) or can then usable = true; break end
+        end
+    end
+    canCast = usable or not any
+end
+
 local lastRelation
 local function updateHalos()
     if not next(halos) then return end
@@ -363,7 +402,14 @@ end)
 DUI.On("Login", function()
     active = DUI:Get(ADDON, key) == true
     if not mod.enabled then return end
-    onlyMine = active and readToggle(onlyMineKey, false)
+    onlyMine = active and readToggle(onlyMineKey, true)
+    onlyUsable = onlyMine and readToggle(usableKey, true)
+    if onlyUsable then
+        updateUsable()
+        for _, event in ipairs({ "SPELL_UPDATE_USABLE", "UPDATE_SHAPESHIFT_FORM", "SPELLS_CHANGED" }) do
+            DUI.RegisterEvent(event, updateUsable)
+        end
+    end
     local function updateSpells()
         canPurge = knowsOffensiveDispel()
         updateHalos()
@@ -412,6 +458,7 @@ DUI.On("Login", function()
                 end
                 if frame == targetFrame and friendlyTarget == nil then friendlyTarget = targetRelation() == "friendly" end
                 local friendly = frame ~= targetFrame or friendlyTarget
+                if onlyUsable and not canCast then friendly = false end
                 local opacity = friendly and entry.strength * (0.45 + 0.55 * progress) or 0
                 if entry.alpha ~= opacity and pcall(container.SetAlpha, container, opacity) then
                     entry.alpha = opacity
@@ -423,3 +470,5 @@ DUI.On("Login", function()
     end)
     if ns.Refresh then ns.Refresh(mod) end
 end)
+
+extras.Loaded("DispelHighlights")

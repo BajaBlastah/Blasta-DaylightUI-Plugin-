@@ -247,3 +247,5 @@ DUI.RegisterEvent("ADDON_LOADED", function(_, name)
     hookTips()
 end)
 DUI.On("Login", function() hookTips(); wrapAuctionator() end)
+
+extras.Loaded("Coins")

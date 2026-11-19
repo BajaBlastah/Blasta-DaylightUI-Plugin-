@@ -54,3 +54,5 @@ hooksecurefunc(Training, "Render", function(page)
         Style.InkText(value, "LABEL")
     end
 end)
+
+extras.Loaded("TrainingTotal")

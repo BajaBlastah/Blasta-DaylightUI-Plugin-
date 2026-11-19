@@ -520,3 +520,5 @@ local function hookHover()
 end
 hookHover()
 hooksecurefunc(XP, "Update", hookHover)
+
+extras.Loaded("ExperienceGain")
