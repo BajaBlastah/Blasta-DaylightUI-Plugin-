@@ -22,17 +22,30 @@ ns.Guard = Guard
 -- own section of the options window, under the Plugins heading.
 local function migrateProfiles()
 	local old = "DaylightAddonSkins"
+	-- This key is also used by Glowey's current plugin. Shared skin settings
+	-- cannot identify legacy Blasta data: copy only Blasta-owned settings and
+	-- keep the source intact, including unknown fields and explicit false values.
+	local blastaKeys = {
+		"auraReminder", "experienceStyle", "squareSpellbookIcons", "characterPanel",
+		"mapZoneLevels", "zoneTitleExtras", "dispelOverlay", "dungeonFinder",
+		"blastaBags", "blastaLoot", "blastaLootSpace", "blastaLootIconBorder",
+		"rageNeed", "consumableBars", "moments", "blastaDispelOnlyMine", "mapTravelRoutes",
+	}
 	for _, profile in pairs(DUI.DB.Root().profileData) do
 		local modules = type(profile) == "table" and profile.modules
 		if type(modules) == "table" and ns.MigratePortraitShape then ns.MigratePortraitShape(profile) end
 		local previous = type(modules) == "table" and modules[old]
 		if type(previous) == "table" then
-			if type(modules[ADDON]) == "table" then
-				DUI.DB.MergeDefaults(modules[ADDON], previous)
-			else
-				modules[ADDON] = previous
+			local legacy = {}
+			for _, key in ipairs(blastaKeys) do
+				if previous[key] ~= nil then legacy[key] = previous[key] end
 			end
-			modules[old] = nil
+			if next(legacy) then
+				if modules[ADDON] == nil then modules[ADDON] = {} end
+				if type(modules[ADDON]) == "table" then
+					DUI.DB.MergeDefaults(modules[ADDON], legacy)
+				end
+			end
 		end
 	end
 end

@@ -408,6 +408,7 @@ function Power.Layout(p, ...)
 end
 
 local layoutRing = Plate.LayoutRing
+local nativeDropRing = Plate.DropRing
 local function leftRing(ring, frame, depth, cutTop, cutBottom)
     local e = ring.pieces
     e.TOPLEFT:SetPoint("TOPLEFT", frame, "TOPLEFT", cutTop - depth, depth)
@@ -421,12 +422,15 @@ local function leftRing(ring, frame, depth, cutTop, cutBottom)
         e.LEFT:SetVertexOffset(2, lean, 0)
         e.LEFT:SetVertexOffset(4, lean, 0)
     end
+    ring.blastaLeftLayout = { frame = frame, depth = depth, top = cutTop, bottom = cutBottom }
 end
 
 function Plate.LayoutRing(ring, frame, depth, topCut, bottomCut, radius)
     local g = angled[frame]
     local was = ring.daylightBoth
-    if g and ring.wipeDir then Plate.DropRing(ring) end
+    -- Cancel the native sweep before fitting: its completion restores straight
+    -- left anchors, even when the ring already used our fade on an earlier unit.
+    if g and ring.wipeDir then nativeDropRing(ring) end
     ring.daylightBoth = g and true or nil
     local left = g ~= nil
     if g and g.flipRight then topCut, bottomCut = g.rightTop, g.rightBottom end
@@ -438,6 +442,7 @@ function Plate.LayoutRing(ring, frame, depth, topCut, bottomCut, radius)
         ring.pieces.LEFT:SetVertexOffset(4, 0, 0)
     end
     ring.blastaLeft = left
+    if not left then ring.blastaLeftLayout = nil end
     if was and not g then
         local keep = ring:IsShown() and ring.daylightRingGoal ~= false
         ring.daylightRingGoal = nil
@@ -446,11 +451,25 @@ function Plate.LayoutRing(ring, frame, depth, topCut, bottomCut, radius)
     end
 end
 
+-- Target repainting changes the outline textures, and native ring cleanup can
+-- restore their anchors. Fit again after that work, including on reused plates.
+local function refitLeft(ring)
+    local g = ring and ring.blastaLeftLayout
+    if g then leftRing(ring, g.frame, g.depth, g.top, g.bottom) end
+end
+if Plate.UpdateTarget then
+    hooksecurefunc(Plate, "UpdateTarget", function(p)
+        refitLeft(p.outline)
+        refitLeft(p.glow)
+    end)
+end
+
 -- A wipe assumes one straight left edge. For paired angles fade the
 -- already fitted outline without moving either edge.
 local showRing, dropRing = Plate.ShowRing, Plate.DropRing
 function Plate.ShowRing(ring, on)
     if not ring.daylightBoth then return showRing(ring, on) end
+    refitLeft(ring)
     -- Only skip when the ring really is in that state: Daylight's previews
     -- repaint the target mark on every refresh, and a ring that was hidden
     -- elsewhere has to come back.
