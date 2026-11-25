@@ -27,6 +27,162 @@ local function filtersOn()
 end
 
 local style = DUI.Style
+local bagModule = DUI:GetModule("Bags")
+
+local function inCombat()
+    return InCombatLockdown and InCombatLockdown()
+end
+
+local headingSizeKey, stackSizeKey = "blastaBagHeadingSize", "blastaBagStackSize"
+local function bagTextSize(key, baseline)
+    local size = tonumber(DUI:Get(ADDON, key)) or baseline
+    return math.max(8, math.min(22, math.floor(size + 0.5)))
+end
+
+local function addTextSize(key, label, baseline)
+    extras.AddSetting(bagModule, "combineStacks", {
+        type = "slider", key = key, label = label, min = 8, max = 22, step = 1, unit = "px", blastaSince = "2.1",
+        get = function() return bagTextSize(key, baseline) end,
+        default = function() return baseline end,
+        set = function(value)
+            local result = DUI:Set(ADDON, key, value)
+            if bags.window and bags.window:IsShown() then window.Relayout(bags.window) end
+            return result
+        end,
+    }, true)
+end
+
+if layout.PaintHeading and layout.HeadH and layout.HEAD_SIZE and layout.HEAD_TEXT then
+    local function headingHeight()
+        return math.ceil(bagTextSize(headingSizeKey, layout.HEAD_SIZE) * 1.2)
+    end
+    local headHeight = layout.HeadH
+    function layout.HeadH(frame, cfg)
+        local height = headHeight(frame, cfg)
+        if frame == bags.window then return height - layout.HEAD_TEXT + headingHeight() end
+        return height
+    end
+    hooksecurefunc(layout, "PaintHeading", function(heading)
+        if not bags.window or heading:GetParent() ~= bags.window.items then return end
+        local size = bagTextSize(headingSizeKey, layout.HEAD_SIZE)
+        if heading.blastaTextSize == size then return end
+        heading.blastaTextSize = size
+        style.SetTextSize(heading.text, size)
+        style.SetTextSize(heading.count, size - layout.HEAD_SIZE + style.SIZE.tiny)
+        heading.text:ClearAllPoints()
+        heading.text:SetPoint("LEFT", heading, "TOPLEFT", 0, 1 - headingHeight() / 2)
+    end)
+    extras.German["Bag category text size"] = "Schriftgröße der Taschenkategorien"
+    addTextSize(headingSizeKey, "Bag category text size", layout.HEAD_SIZE)
+end
+
+if items.Place and items.COUNT_SIZE then
+    hooksecurefunc(items, "Place", function(button)
+        local holder = button:GetParent()
+        if holder and bags.window and holder.dluiWindow == bags.window and button.Count then
+            style.SetTextSize(button.Count, bagTextSize(stackSizeKey, items.COUNT_SIZE))
+        end
+    end)
+    extras.German["Bag stack count size"] = "Schriftgröße der Stapelzahlen"
+    addTextSize(stackSizeKey, "Bag stack count size", items.COUNT_SIZE)
+end
+
+local junk, itemTree = bags.Junk, bags.ItemTree
+if layout.Headed and junk and junk.Sell and junk.PriceOf and cat.Guarded and itemTree and itemTree.Keeps then
+    local saleKey = "blastaBagCategorySale"
+    local entriesByHeading = setmetatable({}, { __mode = "k" })
+    local pendingSale
+    local function stopSale()
+        if pendingSale then wipe(pendingSale) end
+    end
+    local function reportSale(count, total)
+        DUI.Print(T("Sold %d stacks for %s."):format(count, DUI.MoneyString(total)))
+    end
+    DUI.RegisterEvent("MERCHANT_CLOSED", stopSale)
+    DUI.RegisterEvent("PLAYER_REGEN_DISABLED", stopSale)
+
+    local function sellCategory(heading)
+        local entries = entriesByHeading[heading]
+        if not entries or pendingSale or inCombat() or not junk.vendorOpen or not DUI:Get(ADDON, saleKey) then return end
+        local sale, seen = {}, {}
+        local function add(button, link)
+            local holder = button:GetParent()
+            if not holder or holder.dluiWindow ~= bags.window then return end
+            local bag, slot = holder:GetID(), button:GetID()
+            local key = bag .. ":" .. slot
+            if seen[key] then return end
+            seen[key] = true
+            local info = items.InfoAt(bag, slot)
+            if not info or info.hyperlink ~= link or info.isLocked or info.hasNoValue
+                or cat.Guarded(bag, slot, info) or itemTree.Keeps(info, bag) then return end
+            local price = junk.PriceOf(info)
+            if price > 0 then
+                sale[#sale + 1] = { bag = bag, slot = slot, link = link, value = price * (info.stackCount or 1) }
+            end
+        end
+        for _, entry in ipairs(entries) do
+            local link = entry.facts and entry.facts.link
+            if link then
+                add(entry.twinOf or entry.button, link)
+                for _, button in ipairs(entry.extra) do add(button, link) end
+            end
+        end
+        if #sale == 0 then return end
+        -- The client blocks bag sales while the native buyback tab is selected.
+        local merchant = _G.MerchantFrame
+        if merchant and merchant:IsShown() and merchant.selectedTab == 2 then
+            local shopTab = _G.MerchantFrameTab1
+            if shopTab and shopTab.Click then shopTab:Click() end
+            if merchant.selectedTab == 2 then
+                DUI.Print(T("Switch to the merchant's shop tab to sell this category."))
+                return true
+            end
+        end
+        pendingSale = sale
+        junk.Sell(sale, function(count, total)
+            DUI.SafeCall(reportSale, count, total)
+        end, function() pendingSale = nil end)
+        return true
+    end
+
+    local headed = layout.Headed
+    function layout.Headed(frame, cfg)
+        local headings, taken = headed(frame, cfg)
+        if frame == bags.window then
+            for _, row in ipairs(headings) do
+                local heading = row.h
+                if not entriesByHeading[heading] then
+                    local click = heading:GetScript("OnClick")
+                    heading:SetScript("OnClick", function(self, button, ...)
+                        if button == "RightButton" and not (GetCursorInfo and GetCursorInfo())
+                            and not (self.key == "recent" and IsShiftKeyDown and IsShiftKeyDown())
+                            and sellCategory(self) then return end
+                        return click(self, button, ...)
+                    end)
+                end
+                entriesByHeading[heading] = row.g.entries
+            end
+        end
+        return headings, taken
+    end
+
+    extras.German["Sell bag categories with right-click"] = "Taschenkategorien per Rechtsklick verkaufen"
+    extras.German["At a vendor, right-click a category heading to sell its sellable stacks. Locked and protected items are skipped."] =
+        "Beim Händler verkauft ein Rechtsklick auf eine Kategorieüberschrift ihre verkäuflichen Stapel. Gesperrte und geschützte Gegenstände bleiben in der Tasche."
+    extras.German["Sold %d stacks for %s."] = "%d Stapel für %s verkauft."
+    extras.German["Switch to the merchant's shop tab to sell this category."] =
+        "Wechsle zum Händlerangebot, um diese Kategorie zu verkaufen."
+    extras.AddSetting(bagModule, "combineStacks", {
+        type = "toggle", key = saleKey, label = "Sell bag categories with right-click", blastaSince = "2.1",
+        desc = "At a vendor, right-click a category heading to sell its sellable stacks. Locked and protected items are skipped.",
+        get = function() return DUI:Get(ADDON, saleKey) == true end,
+        default = function() return false end,
+        set = function(value)
+            if not value then stopSale() end
+            return DUI:Set(ADDON, saleKey, value)
+        end,
+    }, true)
+end
 
 -- Single categories are renamed, hidden and deleted on DaylightUI's own
 -- Categories page; Blasta no longer keeps a second list for that.
@@ -53,10 +209,6 @@ end
 DUI.On("Login", function()
     for _, group in ipairs(groups) do updateMaterial(unpack(group)) end
 end)
-
-local function inCombat()
-    return InCombatLockdown and InCombatLockdown()
-end
 
 local function itemID(info)
     local id = info and info.itemID
@@ -218,7 +370,6 @@ extras.German["Sorts DaylightUI's bags with Blasta's material and standard categ
 extras.German["A row of filters over the bags: all, new loot, quests, your own categories and a category menu."] =
     "Eine Filterreihe über den Taschen: alle, neue Beute, Quests, eigene Kategorien und ein Kategorie-Menü."
 -- Both switches sit at the top of DaylightUI's "Shelf and List views" card.
-local bagModule = DUI:GetModule("Bags")
 extras.AddSetting(bagModule, "combineStacks", {
     type = "toggle", key = "blastaBags", label = "Blasta categories", reload = true, blastaSince = "1.7",
     desc = "Sorts DaylightUI's bags with Blasta's material and standard categories.",

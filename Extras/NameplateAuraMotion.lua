@@ -19,7 +19,6 @@ local values = {
     bottom = "Slide in from the bottom", left = "Slide in from the left", right = "Slide in from the right",
 }
 local function settingKey(kind) return key .. "_" .. kind end
-local function route(label) return { page = "Auras", tab = "Nameplates", label = label } end
 local preview
 mod.defaults[key] = false
 for _, row in ipairs(rows) do mod.defaults[settingKey(row.kind)] = "zoom" end

@@ -17,6 +17,23 @@ end
 extras.AddSetting(mod, "slant", Edges.Options(mod, "plateLeft", "Left edge direction", function(reset)
     return leftDirection(not reset and mod.db or mod.defaults)
 end), true)
+-- The right end: DaylightUI only cuts it one way (top corner projects) or not
+-- at all (its "Health bar angled end"). Straight here is that switch off.
+local function rightDirection(db)
+    if db.slant == false then return "straight" end
+    return db.plateRight == "bottom" and "bottom" or "top"
+end
+local function flipRight(db) return db and rightDirection(db) == "bottom" end
+local rightRow = Edges.Options(mod, "plateRight", "Right edge direction", function(reset)
+    return rightDirection(not reset and mod.db or mod.defaults)
+end)
+rightRow.get = function() return rightDirection(mod.db or mod.defaults) end
+rightRow.set = function(value)
+    DUI:Set(mod.name, "plateRight", value == "bottom" and "bottom" or "top")
+    return DUI:Set(mod.name, "slant", value ~= "straight")
+end
+rightRow.desc = "Which corner of the bar's right end projects. Straight is DaylightUI's Health bar angled end switched off."
+extras.AddSetting(mod, "plateLeft", rightRow)
 mod.defaults.castSlideFrom = "below"
 extras.AddSetting(mod, "castIcon", { type = "toggle", key = "castSlide", label = "Slide out nameplate cast bar",
     desc = "The cast bar glides into place at the start of a cast." }, true)
@@ -34,18 +51,66 @@ for _, edge in ipairs({ { "castEdgeLeft", "Left cast bar edge" }, { "castEdgeRig
     anchor = edge[1]
 end
 
+-- Cast bar height on Blasta's cast bar tab: a copy of DaylightUI's row (it
+-- keeps its own with the health bar), writing the same setting. And the
+-- spell name movable on the bar; the time has its own rows (DesignParts).
+local G = extras.German
+local CAST_TEXT = {
+    { "blastaCastNameSize", "Spell name text size", 0, 24, "At 0, DaylightUI's size (it follows the bar's height). Values below 6 use 6.", true },
+    { "blastaCastTimeSize", "Cast time text size", 0, 24, "At 0, DaylightUI's size (it follows the bar's height). Values below 6 use 6.", true },
+    { "blastaCastTextX", "Spell name left / right", -80, 80, "Moves the spell name on enemy cast bars left or right, in pixels." },
+    { "blastaCastTextY", "Spell name up / down", -30, 30, "Moves the spell name on enemy cast bars up or down, in pixels." },
+}
+do
+    for _, t in ipairs(CAST_TEXT) do mod.defaults[t[1]] = 0 end
+    local height = extras.FindSetting(mod, "castHeight")
+    local _, items, index = extras.FindSetting(mod, "castY")
+    if items and not extras.FindSetting(mod, CAST_TEXT[1][1]) then
+        if height then
+            local copy = {}
+            for k, v in pairs(height) do copy[k] = v end
+            copy.blastaCopy = true          -- DaylightUI's setting: Reset this tab leaves it
+            copy.blastaJumpAnchor = "castY"
+            index = index + 1
+            table.insert(items, index, copy)
+        end
+        for _, t in ipairs(CAST_TEXT) do
+            index = index + 1
+            table.insert(items, index, { type = "slider", key = t[1], label = t[2], min = t[3], max = t[4],
+                step = 1, unit = not t[6] and "px" or nil, desc = t[5], blastaJumpAnchor = "castY" })
+        end
+    end
+end
+-- The preview's cast bar answers to them like to its own settings.
+for _, part in ipairs(ns.Sample and ns.Sample.PARTS or {}) do
+    if part.label == "Cast bar" and type(part.keys) == "table" then
+        for _, t in ipairs(CAST_TEXT) do part.keys[#part.keys + 1] = t[1] end
+    end
+end
+G["Spell name text size"] = G["Spell name text size"] or "Textgröße Zaubername"
+G["Cast time text size"] = G["Cast time text size"] or "Textgröße Zauberzeit"
+G["At 0, DaylightUI's size (it follows the bar's height). Values below 6 use 6."] =
+    "Bei 0 DaylightUIs Größe (sie richtet sich nach der Höhe der Leiste). Werte unter 6 ergeben 6."
+G["Spell name left / right"] = "Zaubername links / rechts"
+G["Spell name up / down"] = "Zaubername hoch / runter"
+G["Moves the spell name on enemy cast bars left or right, in pixels."] = "Verschiebt den Zaubernamen auf gegnerischen Zauberleisten nach links oder rechts, in Pixeln."
+G["Moves the spell name on enemy cast bars up or down, in pixels."] = "Verschiebt den Zaubernamen auf gegnerischen Zauberleisten nach oben oder unten, in Pixeln."
+
 local wanted = setmetatable({}, { __mode = "k" })
 local customCast = setmetatable({}, { __mode = "k" })
 local angled = setmetatable({}, { __mode = "k" })
 local clips = setmetatable({}, { __mode = "k" })
 local function owner(p)
-    if not p.friendly and ns.cfg and leftDirection(ns.cfg) ~= "straight" then return p end
+    if not p.friendly and ns.cfg and (leftDirection(ns.cfg) ~= "straight" or flipRight(ns.cfg)) then return p end
 end
 
+-- both: true clips at both ends, "right" only at the right one, else only
+-- at the left. A texture holds three masks at most, so each part is cut only
+-- at the ends it can reach.
 local function clip(frame, texture, both)
     if not texture then return end
     local registration = clips[texture]
-    local side = not both and "left" or nil
+    local side = type(both) == "string" and both or (not both and "left" or nil)
     if registration then
         local changed = registration.only ~= side
         registration.only = side
@@ -68,17 +133,30 @@ function Body.Layout(body, cutTop, cutBottom)
         local top, bottom = cutTop or 0, cutBottom or 0
         nativeCut = math.abs(bottom - top)
         custom.nativeRight = top ~= 0 or bottom ~= 0
-        -- Match the health bar at the join. Continuing its slope through
-        -- the gap first would shorten the cast before its own edges are cut.
-        local leftInset, rightInset = custom.leftInset, custom.rightInset
-        local width = frame:GetWidth()
-        if leftInset + rightInset > 0 and width - leftInset - rightInset > 1 then
-            if leftInset > 0 then
-                local point, relative, relativePoint, x, y = frame:GetPoint()
+        -- The cast bar's top edge meets the health bar's bottom edge as drawn,
+        -- from its bottom-left to its bottom-right corner; its own ends then
+        -- lean on in their direction. Worked out from the health bar each time
+        -- (never read back from the cast bar: the plate can't be measured under
+        -- restrictions, and a repeated layout, as in the preview, must not
+        -- shift or shrink it further).
+        local plate = custom.plate
+        local hp = plate and plate.hp
+        if hp then
+            local cfg = ns.cfg or {}
+            local W, hh = hp:GetWidth(), hp:GetHeight()
+            local H = tonumber(cfg.castHeight) or 10
+            local c = nativeCut > 0 and nativeCut or H * Plate.SLANT
+            local left = custom.left == "follow" and leftDirection(cfg) or custom.left
+            local right = custom.right == "follow" and rightDirection(cfg) or custom.right
+            local x0 = (custom.healthLeft or 0) - (left == "bottom" and c or 0)
+            local x1 = W - (custom.healthRight or 0) + (right == "bottom" and c or 0)
+            if x1 - x0 > 4 then
+                local gap = Cast.GAP + (ns.Combo and ns.Combo.Drop(plate) or 0) + (Power.Drop and Power.Drop(plate) or 0)
                 frame:ClearAllPoints()
-                frame:SetPoint(point, relative, relativePoint, x + leftInset, y)
+                frame:SetPoint("TOPLEFT", hp, "TOPLEFT", (tonumber(cfg.castX) or 0) + x0,
+                    -(hh + gap) + (tonumber(cfg.castY) or 0))
+                frame:SetWidth(x1 - x0)
             end
-            frame:SetWidth(width - leftInset - rightInset)
         end
         cutTop, cutBottom = 0, 0
     end
@@ -109,10 +187,10 @@ function Body.Layout(body, cutTop, cutBottom)
     if custom then
         local cut = math.min(g.W / 4, nativeCut > 0 and nativeCut or g.H * Plate.SLANT)
         local left = custom.left == "follow" and leftDirection(ns.cfg) or custom.left
-        local right = custom.right == "follow" and (custom.nativeRight and "top" or "straight") or custom.right
+        local right = custom.right == "follow" and rightDirection(ns.cfg) or custom.right
         g.leftTop, g.leftBottom = left == "bottom" and cut or 0, left == "top" and cut or 0
         g.rightTop, g.rightBottom = right == "bottom" and cut or 0, right == "top" and cut or 0
-        custom.cut, custom.effectiveRight = cut, right
+        custom.cut, custom.effectiveRight, custom.effectiveLeft = cut, right, left
         Edges.Apply(frame, left, right, cut)
         body.shellMode = true
         body.holder:Hide()
@@ -126,12 +204,35 @@ function Body.Layout(body, cutTop, cutBottom)
     local y = math.max(0, span - g.H)
     g.leftTop, g.leftBottom = cut * y / span, cut
     if left == "bottom" then g.leftTop, g.leftBottom = cut - g.leftTop, 0 end
-    -- Leave the native right fill and its reference untouched.
-    Edges.Apply(frame, left, g.angled and "top" or "straight", cut, ref, true)
+    if left == "straight" then g.leftTop, g.leftBottom = 0, 0 end
+    -- The right end turned over: the top corner cut in, the bottom one
+    -- projecting (the left end's "bottom", mirrored).
+    local flip = g.angled and flipRight(ns.cfg) or false
+    g.flipRight = flip
+    if flip then
+        g.rightTop, g.rightBottom = cut - cut * y / span, 0
+    else
+        g.rightTop, g.rightBottom = g.cutTop or 0, g.cutBottom or 0
+    end
+    -- Otherwise leave the native right fill and its reference untouched.
+    Edges.Apply(frame, left, flip and "bottom" or (g.angled and "top" or "straight"), cut, ref, not flip)
     if ref then ref.y = y end
     body.shellMode = true
     body.holder:Hide()
     body.shell:SetShown(not body.off)
+end
+
+-- Everything that leans inside the bar (the fill's moving edge, heals and
+-- shields, the DoT veil, the execute line, Shadow Word: Death's mark) runs
+-- parallel to the left end, the way the plate is seen in perspective. The
+-- right end only cuts the bar off. With a straight left end they follow the
+-- right end; with a straight right end they stay upright (a leaning fill
+-- would leave a notch at full health there).
+-- under: true leans like "\" (top corner further left), false like "/".
+local function innerUnder(left, right)
+    if right == "straight" then return nil end
+    if left == "top" then return true elseif left == "bottom" then return false end
+    return right == "bottom"
 end
 
 local fit = Body.FitBar
@@ -141,13 +242,50 @@ function Body.FitBar(body, bar, overlays)
     local g = angled[frame]
     if g then
         local custom = customCast[body]
+        local left, right
         if custom then
-            cut = custom.effectiveRight == "straight" and 0 or custom.cut * math.max(0, 1 - 2 * g.T / g.H)
-            Edges.Fill(bar, "right", cut, custom.effectiveRight)
+            left, right = custom.effectiveLeft or "straight", custom.effectiveRight or "straight"
+        else
+            left = leftDirection(ns.cfg)
+            right = g.flipRight and "bottom" or (g.angled and "top" or "straight")
         end
-        clip(frame, bar:GetStatusBarTexture(), custom)
-        clip(frame, Style.BarBack(bar), custom)
-        for _, tex in ipairs(overlays or {}) do clip(frame, tex, custom) end
+        local under = innerUnder(left, right)
+        local T = g.T or 0
+        -- The contents' right end, in from the frame's right edge at their top
+        -- and their bottom, and the lean of the fill's edge.
+        local fc, rTi, rBi
+        if custom then
+            fc = under ~= nil and custom.cut * math.max(0, 1 - 2 * T / g.H) or 0
+            rTi, rBi = T + (g.rightTop or 0), T + (g.rightBottom or 0)
+        else
+            fc = cut
+            local IR = Body.InnerRight(body)
+            rTi = IR + (right == "bottom" and fc or 0)
+            rBi = IR + (right == "top" and fc or 0)
+        end
+        local takeOver = custom or right == "bottom" or (under ~= nil and under ~= (right == "bottom"))
+        g.fillCut, g.fillUnder, g.fillBoth = fc, under, takeOver and true or false
+        if takeOver then
+            if under == nil or fc <= 0 then
+                Style.AngleFill(bar, nil, 0)
+            else
+                -- The bar reaches as far as the leaning edge must go to cover
+                -- the whole right end at full; the end's own clip cuts the rest.
+                local inset = under and math.min(rTi - fc, rBi) or math.min(rTi, rBi - fc)
+                bar:ClearAllPoints()
+                bar:SetPoint("TOPLEFT", frame, "TOPLEFT", T, -T)
+                bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, T)
+                Style.AngleFill(bar, "right", fc, under or nil)
+            end
+            -- The background and overlays stay upright; the clips shape them.
+            local back = Style.BarBack(bar)
+            if back then Body.Lean(back, 0) end
+            for _, tex in ipairs(overlays or {}) do Body.Lean(tex, 0) end
+            cut = under ~= nil and fc or 0
+        end
+        clip(frame, bar:GetStatusBarTexture(), takeOver)
+        clip(frame, Style.BarBack(bar), takeOver)
+        for _, tex in ipairs(overlays or {}) do clip(frame, tex, takeOver) end
         Style.LayoutSlant(frame)
     elseif clips[bar:GetStatusBarTexture()] then
         clip(frame, bar:GetStatusBarTexture())
@@ -157,12 +295,78 @@ function Body.FitBar(body, bar, overlays)
     return cut
 end
 
+-- DaylightUI leans the execute line and the DoT veil's end with the fill but
+-- only one way. A fill leaning the other way (Style.AngleFill's under) takes
+-- them along. Vertex offsets: 1 upper left, 2 lower left, 3 upper right,
+-- 4 lower right.
+local sheared = setmetatable({}, { __mode = "k" })
+local function shear(tex, top, bottom, left)
+    if not (tex and tex.SetVertexOffset) then return end
+    sheared[tex] = true
+    if left ~= false then
+        pcall(tex.SetVertexOffset, tex, 1, top, 0)
+        pcall(tex.SetVertexOffset, tex, 2, bottom, 0)
+    end
+    pcall(tex.SetVertexOffset, tex, 3, top, 0)
+    pcall(tex.SetVertexOffset, tex, 4, bottom, 0)
+end
+-- Back to DaylightUI's own lean: it sets the upper corners itself, so only
+-- the lower ones Blasta moved go back.
+local function unshear(tex)
+    if not (tex and sheared[tex]) then return end
+    sheared[tex] = nil
+    pcall(tex.SetVertexOffset, tex, 2, 0, 0)
+    pcall(tex.SetVertexOffset, tex, 4, 0, 0)
+end
+local function underLean(bar)
+    local side, cut, under = Style.GetFillAngle(bar)
+    if not (side and under and type(cut) == "number" and cut > 0) then return nil end
+    return side, cut, side == "right" and cut or -cut
+end
+
+local layoutExecute = Plate.LayoutExecute
+if layoutExecute then
+    function Plate.LayoutExecute(p, ...)
+        local a, b = layoutExecute(p, ...)
+        local e = p.exec
+        if p.execOn and e and p.health then
+            local _, _, lean = underLean(p.health)
+            if lean then
+                shear(e.band, 0, lean, false)
+                shear(e.lit, 0, lean, false)
+                shear(e.line, 0, lean)
+            else
+                unshear(e.band); unshear(e.lit); unshear(e.line)
+            end
+        end
+        return a, b
+    end
+end
+
+local Dots = DUI.Dots
+local layoutVeil = Dots and Dots.LayoutVeil
+if layoutVeil then
+    function Dots.LayoutVeil(veil, bar, ...)
+        local a, b = layoutVeil(veil, bar, ...)
+        if veil and veil.bar and bar then
+            local side, cut, lean = underLean(bar)
+            if lean then
+                Style.AngleTrail(veil.bar, side, cut, true)
+                shear(veil.edge, 0, lean)
+            else
+                unshear(veil.edge)
+            end
+        end
+        return a, b
+    end
+end
+
 -- A DoT veil on an angled plate: its fill and its dark end line both stop at
 -- the plate's slanted end. Also used for Blasta's finisher segment.
-local function clipVeil(frame, veil)
+local function clipVeil(frame, veil, both)
     if not (veil and veil.bar) then return false end
-    local fill = clip(frame, veil.bar:GetStatusBarTexture())
-    local line = clip(frame, veil.edge)
+    local fill = clip(frame, veil.bar:GetStatusBarTexture(), both)
+    local line = clip(frame, veil.edge, both)
     return fill or line
 end
 function extras.ClipPlateVeil(frame, veil)
@@ -176,8 +380,19 @@ function Plate.Layout(p, ...)
     local frame = p.hp
     local g = angled[frame]
     if g then
-        local heals = clip(frame, p.heals and p.heals:GetStatusBarTexture())
-        local absorbs = clip(frame, p.absorbs and p.absorbs:GetStatusBarTexture())
+        if g.fillBoth then
+            -- Heals and shields start at the fill's moving edge and lean with it.
+            local fc, under = g.fillCut or 0, g.fillUnder
+            for _, key in ipairs({ "heals", "absorbs" }) do
+                if p[key] then Style.AngleFill(p[key], under ~= nil and fc > 0 and "right" or nil, fc, under or nil) end
+            end
+        end
+        -- Heals and shields start past the fill, so only the right end can
+        -- reach them; the DoT veils grow back into the fill toward the left end
+        -- and already wear the fill's edge and their own back edge.
+        local tail = g.fillBoth and "right" or nil
+        local heals = clip(frame, p.heals and p.heals:GetStatusBarTexture(), tail)
+        local absorbs = clip(frame, p.absorbs and p.absorbs:GetStatusBarTexture(), tail)
         local veil = p.dotVeil
         local dots = clipVeil(frame, veil)
         local extra = extras.FinisherVeil and extras.FinisherVeil(veil)
@@ -214,6 +429,7 @@ function Plate.LayoutRing(ring, frame, depth, topCut, bottomCut, radius)
     if g and ring.wipeDir then Plate.DropRing(ring) end
     ring.daylightBoth = g and true or nil
     local left = g ~= nil
+    if g and g.flipRight then topCut, bottomCut = g.rightTop, g.rightBottom end
     layoutRing(ring, frame, depth, topCut, bottomCut, left and radius ~= nil and 0 or radius)
     if left then
         leftRing(ring, frame, depth, g.leftTop, g.leftBottom)
@@ -275,6 +491,41 @@ if castRows then
     }
 end
 
+-- The spell name and time where they sit, moved by their offsets. Laid out
+-- here from the same insets DaylightUI and the edges above use (nothing is
+-- read back from the plate).
+local function num(v) return tonumber(v) or 0 end
+local function moveCastText(c, g, custom)
+    local cfg = ns.cfg
+    local nameSize, timeSize = num(cfg.blastaCastNameSize), num(cfg.blastaCastTimeSize)
+    if nameSize > 0 then Style.SetTextSize(c.text, math.max(6, nameSize)) end
+    if timeSize > 0 then Style.SetTextSize(c.time, math.max(6, timeSize)) end
+    local tx, ty = num(cfg.blastaCastTextX), num(cfg.blastaCastTextY)
+    -- The time's offset (DesignParts' rows). Placed from the insets, as a
+    -- nameplate's text can't be measured (GetPoint) under restrictions.
+    local mx, my = num(cfg.castTimeX), num(cfg.castTimeY)
+    if mx ~= 0 or my ~= 0 then
+        local timeX
+        if g and custom then
+            timeX = -(g.T + 2 + math.max(g.rightTop or 0, g.rightBottom or 0))
+        else
+            local T = c.body and c.body.T or 0
+            local geo = c.body and c.body.geo
+            local edge = geo and ((geo.cutTop or 0) + (geo.lean or 0) * (0.5 + (Cast.TEXT or 0.7) * 0.5)) or 0
+            timeX = -(T + 2 + edge)
+        end
+        c.time:ClearAllPoints()
+        c.time:SetPoint("RIGHT", c, "RIGHT", timeX + mx, my)
+    end
+    if tx == 0 and ty == 0 and my == 0 then return end
+    local textX = 3 + (g and math.max(g.leftTop or 0, g.leftBottom or 0) or 0)
+    c.text:ClearAllPoints()
+    c.text:SetPoint("LEFT", c.bar, "LEFT", textX + tx, ty)
+    -- Its right end stays before the time (or the target's name beside it),
+    -- at the same height as its left.
+    c.text:SetPoint("RIGHT", cfg.castTarget ~= false and c.target or c.time, "LEFT", -3, ty - my)
+end
+
 local layoutCast = Cast.Layout
 function Cast.Layout(p, ...)
     local c = p.cast
@@ -285,12 +536,17 @@ function Cast.Layout(p, ...)
         local right = ns.cfg.castEdgeRight or "follow"
         local health = p.hp and angled[p.hp]
         local nativeHealth = p.body and p.body.geo
-        local rightInset = math.max(0, nativeHealth and nativeHealth.cutBottom or p.hpCut or 0)
+        local rightInset = math.max(0, health and health.flipRight and health.rightBottom
+            or nativeHealth and nativeHealth.cutBottom or p.hpCut or 0)
         if not p.friendly and (left ~= "follow" or right ~= "follow" or health or rightInset > 0) then
             custom = customCast[c.body] or {}
-            custom.left, custom.right = left, right
-            custom.leftInset = health and math.max(0, health.leftBottom) or 0
-            custom.rightInset = rightInset
+            custom.left, custom.right, custom.plate = left, right, p
+            -- The health bar's bottom corners, in from its frame's ends.
+            if health then
+                custom.healthLeft, custom.healthRight = health.leftBottom or 0, health.rightBottom or 0
+            else
+                custom.healthLeft, custom.healthRight = 0, rightInset
+            end
         end
         customCast[c.body] = custom
     end
@@ -317,6 +573,7 @@ function Cast.Layout(p, ...)
     elseif c and clips[c.light] and clip(c, c.light) then
         Style.LayoutSlant(c)
     end
+    if c and c.text and c.time then pcall(moveCastText, c, g, custom) end
 end
 
 local stop = Cast.Stop
@@ -367,6 +624,53 @@ function Cast.ShowSample(p, data)
     local entering = not c:IsShown() or c.leaving
     sample(p, data)
     if data and entering and c:IsShown() then slideIn(c) end
+end
+
+-- The elite dragon grips the bar's top-right corner. With the right end
+-- turned over that corner is cut in, so the dragon moves in with it.
+local layoutDragon = Plate.LayoutDragon
+if layoutDragon then
+    function Plate.LayoutDragon(p, h, ...)
+        local a, b = layoutDragon(p, h, ...)
+        local g = p.hp and angled[p.hp]
+        local D, t = Plate.DRAGON, p.dragon
+        if g and g.flipRight and D and t and type(h) == "number" then
+            t:ClearAllPoints()
+            t:SetPoint("TOPLEFT", p.hp, "TOPRIGHT", -D.endX * h - (g.rightTop or 0), D.topY * h)
+        end
+        return a, b
+    end
+end
+
+-- Pieces centered above or below the bar (the name, the debuffs...) sit on the
+-- middle of that edge as drawn. With a slanted end the bar's top and bottom
+-- edges are shorter than its frame and no longer share the frame's middle.
+local spotBox = Plate.SpotBox
+if spotBox then
+    function Plate.SpotBox(p, into, ...)
+        local box = spotBox(p, into, ...)
+        if type(box) == "table" then box.blastaPlate = p end
+        return box
+    end
+end
+local Spots = DUI.Spots
+local spotLayout = Spots and Spots.Layout
+if spotLayout then
+    function Spots.Layout(spot, grow, box, opts, ...)
+        local L = spotLayout(spot, grow, box, opts, ...)
+        local p = type(box) == "table" and box.blastaPlate
+        if p and type(L) == "table" and (spot == "above" or spot == "below")
+            and (L.point == "BOTTOM" or L.point == "TOP") then
+            local g = p.hp and angled[p.hp]
+            if g then
+                local up = spot == "above"
+                local left = tonumber(up and g.leftTop or g.leftBottom) or 0
+                local right = tonumber(up and (g.rightTop or g.cutTop) or (g.rightBottom or g.cutBottom)) or 0
+                L.x = (L.x or 0) + (left - right) / 2
+            end
+        end
+        return L
+    end
 end
 
 extras.Loaded("NameplateShape")

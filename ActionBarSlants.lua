@@ -11,6 +11,18 @@ if not (bars and skin and type(bars.Grid) == "function" and type(bars.Config) ==
     and type(style.Clip) == "function" and type(style.LayoutSlant) == "function"
     and type(style.GetSlant) == "function" and type(skin.StyleSwipe) == "function") then return end
 
+-- Equipment changes can show the template's green Border after the skin
+-- has hidden it. Keep the skinned button's own frame as its only border.
+for _, painter in ipairs(ns.Buttons and ns.Buttons.PAINTERS or {}) do
+    if painter.name == "equipped" and type(painter.fn) == "function" then
+        hooksecurefunc(painter, "fn", function(button)
+            local border = button.Border
+            if border and border.SetAlpha and skin.GetParts(button) then border:SetAlpha(0) end
+        end)
+        break
+    end
+end
+
 local card
 for _, page in ipairs(module.options and module.options.pages or {}) do
     if page.id == "barlayout" then
@@ -52,8 +64,39 @@ local leftEdge = setmetatable({}, { __mode = "k" })
 local rightEdge = setmetatable({}, { __mode = "k" })
 local applied = setmetatable({}, { __mode = "k" })
 local swipeFiles = setmetatable({}, { __mode = "k" })
+local flashes = setmetatable({}, { __mode = "k" })
 local cooldownKeys = { "cooldown", "Cooldown", "chargeCooldown", "lossOfControlCooldown" }
 local textureGetters = { "GetHighlightTexture", "GetPushedTexture", "GetCheckedTexture" }
+
+local function fitAttackFlash(button, parts, side)
+    local flash = button.Flash
+    if not (flash and flash.SetColorTexture) then return end
+    local state = flashes[flash]
+    if not state then
+        state = { atlas = flash:GetAtlas(), texture = flash:GetTexture(), coords = { flash:GetTexCoord() } }
+        flashes[flash] = state
+    end
+    -- Daylight already anchors the flash to the icon.
+    local mask = parts.shape and parts.shapeMask or nil
+    if state.mask ~= mask then
+        if state.mask then flash:RemoveMaskTexture(state.mask) end
+        if mask then flash:AddMaskTexture(mask) end
+        state.mask = mask
+    end
+
+    local flat = side ~= nil or mask ~= nil or parts.back.radius == 0
+        or (parts.L and parts.L.corners == "square")
+    if flat then
+        -- The stock flash has a rounded highlight baked into the art.
+        flash:SetColorTexture(1, 0, 0, 0.45)
+        flash:SetTexCoord(0, 1, 0, 1)
+    elseif state.flat then
+        if state.atlas then flash:SetAtlas(state.atlas) else flash:SetTexture(state.texture) end
+        flash:SetTexCoord(unpack(state.coords))
+    end
+    state.flat = flat
+end
+
 local function clipSwipe(cd, file)
     pcall(cd.SetSwipeTexture, cd, file)
     -- The client's edge and finish flash are separate from the swipe texture.
@@ -104,10 +147,10 @@ end
 
 local function dress(button, afterSkin)
     local side, state = desired[button], applied[button]
-    if not side and not state then return end
     local parts = skin.GetParts(button)
     if not (parts and parts.back) then return end
     if parts.shape then side = nil end
+    fitAttackFlash(button, parts, side)
     if not side then
         if state and state.side then
             state.side, state.cut = nil, nil
@@ -145,6 +188,7 @@ local function dress(button, afterSkin)
         clip(parts.shade)
         clip(parts.press)
         clip(parts.back.lit)
+        clip(button.Flash)
         for _, getter in ipairs(textureGetters) do
             if button[getter] then clip(button[getter](button)) end
         end
@@ -183,6 +227,9 @@ DUI.On("ActionBarLaidOut", function(key)
 end)
 
 hooksecurefunc(skin, "Apply", function(button) dress(button, true) end)
+if skin.Redress then
+    hooksecurefunc(skin, "Redress", function(button) dress(button, true) end)
+end
 hooksecurefunc(skin, "StyleSwipe", function(cd)
     local state = swipeFiles[cd]
     if state then clipSwipe(cd, state.file) end

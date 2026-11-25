@@ -72,6 +72,18 @@ local function text(parent, size, top, quiet)
     return fs
 end
 
+-- The big clock without an outline: DaylightUI's outline grows with the
+-- font, and at this size it ran the digits into each other and past their
+-- line. A soft shadow keeps it readable over the world. Applied again when
+-- DaylightUI dresses the text anew (a style change).
+local function plainClock(fs)
+    if not (fs and fs.GetFont) then return end
+    local file, size, flags = fs:GetFont()
+    if file and flags ~= "" then fs:SetFont(file, size, "") end
+    fs:SetShadowColor(0, 0, 0, 0.8)
+    fs:SetShadowOffset(2, -2)
+end
+
 local function stat(parent)
     local line = CreateFrame("Frame", nil, parent)
     local name = style.Text(line, 13, "LEFT")
@@ -109,6 +121,7 @@ local function build(screen)
     p.rule = rule
     p.away = text(p, 13, 0, true)
     p.clock = text(p, 64, 19)
+    plainClock(p.clock)
     p.name = text(p, 26, 97)
     p.identity = text(p, 14, 130, true)
     p.zone = text(p, 15, 155)
@@ -149,7 +162,17 @@ local function layout(p, slide)
     fade:SetWidth(width * 0.57)
     p:SetScale(scale)
     p:ClearAllPoints()
-    p:SetPoint("RIGHT", p:GetParent(), "RIGHT", -width * 0.10 / scale + (1 - slide) * 24, -8)
+    local offset = (1 - slide) * 24
+    local screen = p:GetParent()
+    if afk.MOVER and screen.panel then
+        local _, stage = screen.panel:GetPoint(1)
+        if stage then
+            -- Preserve Blasta's default placement, then follow DaylightUI's AFK mover.
+            p:SetPoint("RIGHT", stage, "LEFT", (width * 0.40 - height * 0.02) / scale + offset, -8)
+            return
+        end
+    end
+    p:SetPoint("RIGHT", screen, "RIGHT", -width * 0.10 / scale + offset, -8)
 end
 
 local function progress(p, value)
@@ -185,6 +208,7 @@ local function tick()
     if not (active and card) then return end
     local away = afk.Clock(math.max(0, GetTime() - (afk.since or GetTime())))
     card.away:SetText(L["AWAY"] .. "  ·  " .. away)
+    plainClock(card.clock)
     card.clock:SetText(afk.TimeOfDay())
     if sessionRow then sessionRow.value:SetText(afk.Clock(math.max(0, GetTime() - sessionStart))) end
 end

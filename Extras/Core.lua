@@ -339,15 +339,9 @@ function extras.GeneralPage()
     return page
 end
 
--- Outline flags for Blasta's own SetFont calls. DaylightUI 1.9.5 draws its
--- outlined text with the game's slug renderer (Style.Slug); Blasta's text
--- follows so both look equally crisp. Older DaylightUI: flags unchanged.
-function extras.Outline(flags)
-    local slug = DUI.Style and DUI.Style.Slug
-    if type(slug) ~= "function" then return flags end
-    local ok, out = pcall(slug, flags)
-    return ok and type(out) == "string" and out or flags
-end
+-- Outline flags for Blasta's own SetFont calls: DaylightUI 1.9.6 draws the
+-- plain outline again, so they pass through unchanged.
+function extras.Outline(flags) return flags end
 
 -- Each integration checks the methods and tables it needs before hooking them.
 function extras.Compatible(name)

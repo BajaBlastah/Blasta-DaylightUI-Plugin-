@@ -1,4 +1,306 @@
-# Blasta (DaylightUI Plugin) — next version (in development)
+# Blasta (DaylightUI Plugin) 2.1
+
+## Compatibility
+
+- Blasta's AFK card follows the AFK screen position set in DaylightUI 2.2.6's Unlock mode.
+
+## Tooltips
+
+- Spell and equipment tooltips use a single compact facts row. Equipment shows armor class or weapon type, item level, and required level. Rings and trinkets use the type **Jewelry**. The slot and binding share one line above the strip.
+- The equipment strip uses DaylightUI's quality color for item level and its category colors for armor and weapon types. Required character levels show in green when met and red when too high.
+- Tooltip frames and facts strips have a slightly deeper bottom-right cut. The item strip has a continuous outline along the cut. The icon's quality border follows its own cut and aligns with the strip's left edge.
+- Linked item comparisons use the rendered card widths to choose a side. When horizontal space is tight, comparison cards can stack vertically.
+- Food, potions, and other items show the required level beside the item type when both fit.
+- Profession tools and items without an equipment slot use the compact item header, with type and binding on one line and no equipment strip.
+
+## Loot and inventory
+
+- DaylightUI bags have separate font-size controls for category headings and their counters, and for the stack counts on item icons.
+- An optional merchant shortcut sells eligible stacks from a category when you right-click its heading. It includes combined stacks and skips locked and protected items. The shortcut is off by default.
+- Category sales use DaylightUI's coin formatting for their chat summary. A reporting error no longer interrupts cleanup or blocks the next sale.
+- Category sales switch from the game's Buyback tab to the shop before selling. Items under **Recent** can be sold the same way. Shift-right-click still opens the Recent menu.
+
+- When loot does not fit, **Make room for loot** slides out on the side with space and shares the loot window's frame. The drawer stays readable above the shared background, and closing it restores the standard loot window.
+- The drawer shows sellable poor and common stacks that would make enough room, ordered by the vendor value of the whole stack. Hearthstones, quest items, and items with no vendor value are excluded. Stacks worth more than the loot are highlighted.
+- **Replace** rechecks the selected stack and its destination, then deletes the stack and automatically attempts to take the loot as soon as space is confirmed. Blasta retries once if necessary. WoW can still require its own confirmation for certain items.
+- Choose Blasta or Delete Cheapest Item per character from a DaylightUI dialog when both are installed. The choice is also available from **Loot** settings.
+- Loot window icons can use a square one-pixel quality border or the original style. The square border is reapplied when WoW reuses a loot row and keeps the native quest indicator.
+- Reuse one bag snapshot when comparing several loot items. Refresh the drawer on relevant bag or item-data changes and skip repeated layout updates.
+
+## Icon feedback
+
+- Aura reminder icons show a white outline on hover that follows the cut corner.
+- Quest tracker item buttons show a hover outline and report recognized range, cooldown, or usability restrictions in the tooltip.
+
+## Settings
+
+- Under **World & moments**, **Loot** combines the loot window, bag space helper, loot rolls, and loot feed. **Chat** combines chat corners, the micro menu, and whisper windows, with selectable previews.
+- Under **Info panel & buffs → Buffs**, the minimap aura corner option now sits with spacing and animation. Existing settings are retained and the overview links to their new locations.
+
+# Blasta (DaylightUI Plugin) 2.0
+
+## Tooltips
+
+- Spell tooltips group cast time, cost, range, and cooldown into a compact strip, with the spell school near the title and the rank aligned with the title on the right.
+- Tooltip icons have a small cut in the bottom-right corner. The border follows the cut and uses the item's quality color where applicable.
+- Hold **Shift** over an item in your bags to see the vendor and auction values for the total quantity across your bag stacks. The price label shows the quantity, and bank items are excluded.
+- Removed the auction price's **Seen … ago** line from Blasta item tooltips.
+
+## Chat and damage meter
+
+- Choose **Off**, **Bottom left**, or **Bottom right** for the chat and separate damage meter windows. Each has its own setting.
+- The chat setting also styles Blasta's chat micro menu, whisper tiles, and whisper windows.
+- The damage meter reserves space below its rows so the cut stays clear of progress bars, names, and amounts.
+
+## Buffs and unit frames
+
+- The minimap buff display offers optional cut-corner icons and even spacing between categories.
+- Minimap buff and debuff slide animations are suppressed by default to avoid replaying on refreshes during looting and combat transitions. Restore them in Blasta's buff settings.
+- Aura reminders offer a cut bottom-right corner.
+- The friendly-target outline blends with Blasta's dispel highlight and gives the highlight priority when it appears.
+
+## Settings
+
+- **New in Blasta 2.0** links to the updated features. New settings are marked on their own pages.
+
+# Blasta (DaylightUI Plugin) 1.9.8
+
+## Spellbook training
+
+- The **Training** tab in DaylightUI's spellbook now works without What's Training? installed. Blasta supplies the WoW: Forever data for all nine classes, including spell ranks, requirements, quest rewards, weapon skills, hunter pet abilities, and warlock grimoires. The bundled data includes its MIT license and source attribution.
+- Training tooltips list discounted trainer factions together under **Training discounts**, directly below the regular cost. Equally cheap options are both marked. The prices are estimates based on your current reputation.
+- The Training tab shows the lowest estimated total for a trainer faction that covers all currently learnable paid spells.
+- When What's Training? is enabled, a DaylightUI dialog lets you choose which add-on supplies the Training tab for this character. Use `/blasta training` to change the choice later.
+
+## Tooltips
+
+- Tooltips opened by clicking a link in chat have a working close button on the Blasta panel.
+- Blasta honors DaylightUI's **Spell and item IDs** setting for spells, buffs, and debuffs. The spell ID is shown once, even when Blasta's detail rows are hidden.
+
+## Action bars
+
+- Equipped items use the regular action bar border. The stock green outline stays hidden after equipment changes.
+
+## Quest tracking
+
+- An optional setting tracks quests in your current zone and frees slots by untracking quests elsewhere. Pinned quests and your priority quest are protected. Tracking waits until you land after a taxi ride or flight.
+
+## Maintenance
+
+- Removed two unused helpers and two legacy Lua files that were no longer loaded.
+
+# Blasta (DaylightUI Plugin) 1.9.7
+
+## Character window
+
+- Fixed a Lua error when opening the character window with an empty equipment slot on DaylightUI 2.2.4, including when Blasta's character-window styling is disabled.
+- Enchantment text uses DaylightUI's accent color when the old enchantment color is unavailable. Durability warnings retain their own colors.
+
+## Loot feed
+
+- Loot quantities and bag totals stay at their configured text size when stacks merge. The count has a sharper, higher-contrast style, and the bag total uses a valid color code.
+
+# Blasta (DaylightUI Plugin) 1.9.6
+
+## Nameplates
+
+- Under **Blasta → Nameplates → Threat**, choose **Pull threshold**, **Relative threat**, or **Both threat values**. The pull percentage matches the target frame on your selected enemy. Relative threat can exceed 100%.
+- **Threat state colors** color the number independently of the display mode. By default, green means you hold aggro, yellow warns of a possible change, and red means aggro is elsewhere. Unavailable states use a neutral tint. **Green while holding aggro** can swap green and red.
+- Fixed the fitted debuff row spacing being deferred on live plates in combat. Live plates and the preview now use the same spacing calculation.
+
+## Cast bars
+
+- DaylightUI 2.2.2 and later draw channel ticks on your own cast bar. Enable them under **Unit frames → Player → Cast bar → Channel ticks**.
+- Blasta still supplies tick markers for other unit cast bars and enemy nameplates. Older DaylightUI versions can still use Blasta's own player markers.
+
+## Tooltips
+
+- Item tooltips show each RestedXP guide once, even when its first entry carries the guide heading.
+- Disenchant results show material prices and their expected value, using DaylightUI's remembered prices when Auctionator has none. If some material prices are missing, the total is labeled as a minimum.
+
+- The Buff Reminder tooltip shows the rank the button casts.
+
+## Character window
+
+- Fixed a Lua error in equipment rows on DaylightUI versions that use the accent for enchantments.
+
+Compatibility checks were run against DaylightUI 2.2.3.
+
+# Blasta (DaylightUI Plugin) 1.9.5
+
+## Nameplates
+
+- Enable **Threat %** under **Blasta → Nameplates → Threat**. It is off by default and uses DaylightUI’s existing per-enemy threat number in a group or with a pet.
+- Drag the number in Design mode. Its position, font and size are shared with DaylightUI’s nameplate settings.
+- The optional color gradient runs from green at 0% through yellow to red at 100%. Tanks can reverse it to make 100% green.
+
+## Fixes
+
+- Blasta’s settings tabs wrap onto additional rows as the window narrows. The settings below move down to leave room for all tabs.
+- The target-frame preview draws the spell name and remaining cast time in front of the cast bar without clipping them at the slide animation’s top edge.
+- The red auto-attack flash follows slanted action buttons and fills square buttons all the way to their corners.
+
+Compatibility checks were run against DaylightUI 2.2.1.
+
+# Blasta (DaylightUI Plugin) 1.9.4
+
+## Chat
+
+- **Blasta Micro Menu** opens from the three dots in the chat header with a short slide and fade. It includes the World of Warcraft: Forever menu entries, their tooltips, and your current keybindings.
+- Choose whether the menu opens above the left or right edge of the chat, or beside it on the right. The settings preview shows the selected position, and the top line follows DaylightUI's accent settings, including class colors.
+- The micro menu is opt-in. While it is enabled, Blasta hides the standard menu. Turning Blasta's menu off restores the previous DaylightUI setting.
+- **Whisper conversation from the chat's edge** now has an animated preview showing how the chat frame extends around the conversation.
+
+## Flight timer
+
+- **Land early** is a compact text action centered below the flight timer. The banner extends around it and keeps DaylightUI's background settings.
+- When WoW offers early landing, the action can appear even if DaylightUI has no intermediate stop recorded. The separate WoW button is hidden while the integrated action takes over. The settings preview shows the new placement.
+
+## Loot roll window
+
+- The roll window now has the same cut bottom-right corner as Blasta's tooltips. The roll markers sit farther left to clear the corner.
+- An optional square loot icon uses a one-pixel quality-colored border. The **Loot Roll Window** tab previews the corner, roll markers, and icon.
+
+## Loss of control
+
+- New layout with the remaining time inside a cut-corner effect icon and the effect name above a thin countdown line.
+- Resize the indicator from **28 to 72 px**. The entire indicator stays centered on its mover, and the **Test** button runs a timed sample at the actual in-game position.
+- The ring remains available. The settings preview shows one style at a time.
+
+## Nameplates and tooltips
+
+- Added a vertical spacing slider for nameplate debuff rows. **0** keeps automatic spacing, and the preview shows the gap when multiple rows are configured.
+- Fixed duplicate quest progress on mob tooltips when the objective text already included the count. The progress appears once beside the drop chance.
+
+
+# Blasta (DaylightUI Plugin) 1.9.3 — 2026-11-21
+
+## Tooltips
+
+- Quest-mob tooltips show your progress and the drop chance on the same row. Drop rates come from Questie when its drop-rate option is enabled, even if Questie’s own tooltips are turned off.
+- Hold **Shift** to see party progress. Each identified player is listed once, and completed objectives are shown in green.
+- Item tooltips show a colored **GS** label below the icon.
+- Spell tooltips show the spell’s own cooldown and omit the global cooldown.
+- Fixed a jump to the bottom-left corner at combat start when DaylightUI temporarily moves the original tooltip off-screen.
+- Repeated tooltips reuse quest progress until the quest log changes.
+
+## Professions
+
+- The selected recipe’s **Profit** section can use saved Auctionator prices when DaylightUI has no price for an item. The section shows material costs, expected sale price, the auction house cut, and estimated net profit when prices are available.
+- The recipe list keeps DaylightUI’s profit column visible with Blasta’s skill-up chance subtitle enabled.
+
+## Chat
+
+- Whisper buttons above the chat show full names and wrap as needed. Unread counts, pins, and click actions are preserved.
+- The whisper layout avoids a second layout pass when a conversation opens above the chat.
+
+## Unit frames
+
+- **Level badge position:** DaylightUI handles the position and shows a single pair of offset sliders. Those same sliders also adjust the badge on the portrait ring when Blasta is active.
+
+## Removed from the release package
+
+- Retired code for Blasta’s old flight timer and its RestedXP Elegant skin. Both files were already outside the add-on’s load list.
+
+
+# Blasta (DaylightUI Plugin) 1.9.2 — 2026-11-20
+
+Made for DaylightUI 2.0. Checked against every DaylightUI 2.0 file Blasta works with: every Blasta part still finds what it hooks.
+
+## Tooltips
+
+- **The frame of DaylightUI's cards** — No colored frame all around anymore: DaylightUI's own tooltip border and background (its thickness and opacity settings), a colored light along the top (the item's quality, a player's class or reaction, a spell's school) and the cut bottom-right corner, like DaylightUI 2.0's rich tooltips.
+- **DaylightUI's text colors** — The name and item level in the quality's light color; armor type, slot and binding in DaylightUI's colors (cloth, leather, mail, plate, weapons, jewelry…); a stat's number in its stat color with the word in DaylightUI's text color; armor, damage, speed and damage per second numbers in the accent; equip, use and enchantment effects in DaylightUI's green; damage and healing numbers in spell descriptions in their colors; stat changes in DaylightUI's green and red. A requirement you don't meet and armor or weapons you can't use stay red.
+- **Placed like DaylightUI's tooltips** — The hidden game tooltip is now exactly the card's size and the card lies on it, as DaylightUI 2.0 does with its own cards. So DaylightUI places it: beside a recipe in the profession window instead of over the recipe list, turned to the other side where the screen runs out.
+- **Comparison cards in a row** — Beside the main card, away from what you hover, on the side with room for all of them. They no longer slide over each other at the screen edge.
+- **Soft fade out** — The Blasta card fades out like DaylightUI 2.0's tooltips, instead of DaylightUI's fading copy showing the hidden game tooltip for a moment. Not while a window just refills its tooltip, so the profession window no longer flickers.
+- **Spell macros** on your action bars (a @mouseover heal, say) get Blasta's spell tooltip for the spell they cast. The current client already names a spell macro's spell on the button, which Blasta reads now; else it finds the spell through the macro or the tooltip's own lines.
+- **Shadow damage and the other schools** — "Increases damage done by Shadow spells…" read as Spell Damage on German clients whose wording doesn't say "durch Schattenzauber". Blasta now finds the school anywhere in the line: +13 Schattenschaden, +20 Feuerschaden and so on.
+- **Healing items** show healing and spell damage on their own lines ("+8 Healing", "+3 Spell Damage") instead of one spell power value.
+- **One card at a time** — DaylightUI 2.0's rich cards stay off while Blasta's tooltip style is on.
+- **Buff tooltip** — Blasta's card also covers DaylightUI's own buff tooltip. The aura icons on unit frames, nameplates and beside the minimap show the client's own tooltip, which no addon can reach.
+
+## Character window
+
+- **Item level text size** — The item level on the equipment icons has its own size (6–20). **Blasta → Windows → Character window**.
+- **No needless second line for item names** — A name just a little too long for the room beside its icon stays on one line and reaches a bit further toward the model instead of breaking.
+
+## Talents
+
+- **Talent rows with their points** — Each row of a talent tree shows how many points in that tree it takes (0, 5, 10 …) on its left, with a band across the tree: reached rows normal, the next row in your accent color, the rest dimmed. Under each tree's name: how many more points open the next row ("3 more to open row 6"). Also in the inspect window.
+
+## Chat
+
+- **Whisper conversation from the chat's edge** — A whisper conversation opened beside the chat slides out as part of it, the way DaylightUI's damage meter slides out of the minimap. On by default: **Blasta → World & moments → Whisper conversation**.
+
+## Nameplates
+
+- **Cast bar text like your own cast bar** — On enemy cast bars the spell name and the cast time each get a text size and can each be moved. **Cast bar height** is now also on Blasta's cast bar tab. All of it shows in the options preview. **Blasta → Nameplates → Cast bar**.
+
+## Experience bar
+
+- **Border, corners and shadow are DaylightUI's** — DaylightUI gives the experience bar its own border, corners and shadow (**Info panel → Experience bar → Own border and shadow**). A border or shape you had set in Blasta moves over once. Blasta's slanted ends, text positions and gain effects stay.
+
+## Crowd control alert
+
+- **Icon fills the ring** up to its inner edge.
+- **Nothing jumps at the end** — Ring and text fade out where they are.
+
+## Profession window
+
+- **Tidier Learnable header** — Just how many you can learn now; the sort link is one word, **Category** or **Skill**, and no longer runs into the title.
+
+## Fixed
+
+- **Nameplate aura heights** no longer fall back to DaylightUI's size now and then.
+- **Recipes no longer stay red in the bags after a skill-up.**
+- **Options messages** — Blasta's pages no longer report "missing label" or "no default for mapTravelRoutes".
+- **Moving the time on nameplate cast bars** no longer causes an error on enemy plates ("Can't measure restricted regions").
+
+## Removed (DaylightUI has them now)
+
+- **Tooltip border thickness** — DaylightUI 2.0 has its own (Tooltips → Look). Your value was stored under the same name, so it stays.
+- **Shorten nameplate names** — DaylightUI shortens long nameplate names to initials itself (Nameplates → Name → Shorten long names). If Blasta's switch was on, DaylightUI's is turned on once. Blasta's abbreviated target names on the target frame stay.
+- **Flight timer extras** — DaylightUI's flight timer is a banner that floats over the world with your route; Blasta's options for the old bar had nothing left to work on.
+- **Old 1.9.5 outline code** — DaylightUI draws thin outlines again.
+- **Old files Blasta no longer loaded** — The former skins of other addons and the old RXP extras.
+
+
+# Blasta (DaylightUI Plugin) 1.9.1 — 2026-11-19
+
+Made for DaylightUI 1.9.5. Every Blasta setting still works with it.
+
+## Profession window
+
+- **Professions panel** — A column on the right of DaylightUI's profession window, part of the same window: every profession you know as a card with its icon, skill and maximum, a bar (orange at the rank's limit, green when maxed) and what's next, under Primary and Secondary. Click a card to switch to that profession; hover it for details. The profession tabs above the list are hidden while the panel is on. **Blasta → Windows → Professions panel**.
+- **Learnable recipes** — Recipes you could learn now or soon show at the bottom of the recipe list, in DaylightUI's own style: names colored by how likely they give a skill point (orange, yellow, green, gray), with the skill needed, where to learn them (trainer, vendor, drop, quest) and what's still missing. Click one for its requirements, skill range and materials. Sort them by **skill** or **category** with the link above the group. No separate trainer window needed. Recipe data from [WhatsTraining](https://github.com/fusionpit/WhatsTraining) (MIT, see THIRD-PARTY.md).
+
+## Nameplates
+
+- **Fit debuffs to the nameplate** — Set how many debuffs per row and how many rows (1–3). Your debuff size stays; only when a full row would stick out past the health bar do the icons shrink until it fits exactly edge to edge. Replaces DaylightUI's *Max debuffs shown* while on. **Blasta → Nameplates → Nameplate auras**.
+- **Right edge direction** — The right end of enemy nameplates can now lean the other way too: **Top corner projects** (DaylightUI's look), **Bottom corner projects** or **Straight**. The fill, heal and shield bars, the target glow and a cast bar set to follow the plate turn with it. Next to **Left edge direction** in **Blasta → Nameplates**.
+- **Lines inside the bar follow the left end** — The fill's edge, heals and shields, the DoT veil, the execute line and Shadow Word: Death's mark now always lean like the plate's left end, so the plate keeps its perspective whichever way the right end leans. With a straight left end they follow the right end; with a straight right end they stay upright.
+- **Cast bar flush under the plate** — The cast bar's top edge now runs exactly along the health bar's bottom edge, corner to corner, and its ends continue the plate's lean. It no longer shrinks or shifts in the options preview.
+- **Elite dragon on the turned-over corner** — With the right end turned over, the elite dragon moves in to the bar's top-right corner.
+- **Centered on the bar as drawn** — The name, debuffs and other pieces centered above or below the bar now sit on the middle of the bar's slanted edge, not the middle of its frame, so they no longer lean a few pixels left with Blasta's left edge shapes.
+
+## Look
+
+- **Crowd control alert as a ring** — When you're stunned, feared or silenced, the alert shows the icon round in the middle with the time on it, a ring around it that runs down with the effect, and the name underneath. Works in combat too. Icon size, ring thickness, color (accent, class or your own), track opacity, the name and the text sizes of name and time are adjustable, with a live preview above the settings. Off by default: **Blasta → World & moments → Crowd control alert**.
+- **DaylightUI's new font rendering** — Blasta's own texts (bag item levels, aura bar texts and the like) use DaylightUI 1.9.5's new outline (SLUG) like the rest of the interface, with the old outline as a fallback.
+
+## Performance
+
+- **Nameplate auras** — With all of Blasta's nameplate aura options at DaylightUI's look (no square icons, thin borders, own heights or fitted debuffs), Blasta no longer looks at nameplate aura changes at all. In a fight these come many times a second for every plate in range.
+- **Dispel highlight** — Without motion the highlight is checked five times a second instead of forty; with motion it pulses as smoothly as before.
+
+## Fixed
+- **AFK screen clock** — The big clock no longer runs its digits into each other: with DaylightUI 1.9.5's new outline it grew too thick at that size, so the clock now has a soft shadow instead.
+- **Channel tick markers on your cast bar** — DaylightUI 1.9.5 moved your cast bar's card to the player frame's page, so Blasta's **Channel tick markers** switch had vanished there. It's back (Unit frames → Player → Cast bar), and Blasta now finds the card wherever DaylightUI puts it. A switch you had on stays on.
+
+## Party frames
+
+- **Dispel highlight with a detached power bar** — On party frames whose power bar (or portrait) sits apart from the frame, the dispel highlight now covers just the frame again instead of reaching into the gap.
 
 ## Unit frames
 

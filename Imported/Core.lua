@@ -76,6 +76,7 @@ end
 
 function ns.RegisterSettings(pages)
 	defaults.auraReminder = ns.AuraReminderDefaults
+	defaults.auraIconCorners = false
 	defaults.experienceStyle = ns.ExperienceDefaults
 	defaults.squareSpellbookIcons = false
 	defaults.characterPanel = ns.CharacterPanelDefaults
@@ -85,10 +86,31 @@ function ns.RegisterSettings(pages)
 	defaults.compatNotice = ""
 	defaults.blastaBags = false
 	defaults.blastaLoot = ns.LootFeedDefaults
+	defaults.blastaLootSpace = true
+	defaults.blastaLootIconBorder = "square"
 	defaults.rageNeed = ns.RageNeedDefaults
 	defaults.consumableBars = ns.ConsumableBarDefaults
 	defaults.moments = ns.MomentsDefaults
 	defaults.blastaDispelOnlyMine = false
+	defaults.mapTravelRoutes = true
+	-- DaylightUI 1.9.5 checks every row: one without a text label (a custom row
+	-- carried over from a DaylightUI page) gets its title or an empty label.
+	for _, page in ipairs(pages or {}) do
+		for _, group in ipairs(page.groups or {}) do
+			if type(group.label) ~= "string" then group.label = "" end
+			for _, item in ipairs(group.items or {}) do
+				local ok = type(item.label) == "string" or (item.type == "text" and type(item.label) == "function")
+				if not ok then
+					local title = item.title or item.name
+					if type(item.label) == "function" then
+						local fine, text = pcall(item.label)
+						if fine and type(text) == "string" then title = text end
+					end
+					item.label = type(title) == "string" and title or ""
+				end
+			end
+		end
+	end
 	Guard(function()
 		migrateProfiles()
 		DUI:RegisterPlugin(ADDON, {

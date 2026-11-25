@@ -12,7 +12,7 @@ local function get(key) return DUI:Get(ADDON, root .. "." .. key) end
 local function enabled() return get("enabled") == true end
 extras.CharacterPanelDefaults = {
     enabled = false, square = true, border = 3, enchants = true,
-    durability = true, durabilityThreshold = 50, itemLevel = true,
+    durability = true, durabilityThreshold = 50, itemLevel = true, itemLevelSize = 11,
     qualityGradient = false, qualityGradientAlpha = 0.2, gearCheck = "always",
 }
 extras.CharacterPanelGroup = { label = "Appearance", items = {
@@ -32,6 +32,13 @@ for _, option in ipairs({
         disabled = function() return not enabled() end,
     }
 end
+extras.German["Item level text size"] = "Textgröße der Gegenstandsstufe"
+extras.German["The item level on the equipment icons."] = "Die Gegenstandsstufe auf den Ausrüstungssymbolen."
+extras.CharacterPanelGroup.items[#extras.CharacterPanelGroup.items + 1] = {
+    type = "slider", key = root .. ".itemLevelSize", label = "Item level text size",
+    desc = "The item level on the equipment icons.", min = 6, max = 20, step = 1,
+    disabled = function() return not enabled() or get("itemLevel") == false end,
+}
 extras.CharacterPanelGroup.items[#extras.CharacterPanelGroup.items + 1] = {
     type = "slider", key = root .. ".durabilityThreshold", label = "Show durability at or below",
     min = 0.25, max = 1, step = 0.05, unit = "%",
@@ -249,13 +256,18 @@ local function paintLevel(slot, item, show)
         badge = CreateFrame("Frame", nil, slot.icon)
         badge:SetPoint("BOTTOMLEFT", slot.icon, "BOTTOMLEFT")
         badge:SetPoint("BOTTOMRIGHT", slot.icon, "BOTTOMRIGHT")
-        badge:SetHeight(13)
         local background = badge:CreateTexture(nil, "BACKGROUND")
         background:SetAllPoints()
         background:SetColorTexture(0, 0, 0, 0.72)
         badge.text = style.Text(badge, 11, "CENTER")
         badge.text:SetPoint("CENTER")
         slot.blastaItemLevel = badge
+    end
+    local size = math.max(6, math.min(20, tonumber(get("itemLevelSize")) or 11))
+    if badge.size ~= size then
+        badge.size = size
+        style.SetTextSize(badge.text, size)
+        badge:SetHeight(size + 2)
     end
     badge.text:SetText(tostring(item.level))
     badge:Show()
@@ -313,13 +325,49 @@ hooksecurefunc(slots, "Paint", function(slot, item)
     local wear, color = durability(item)
     local enchant = get("enchants") ~= false and item.enchant
     slot.line:SetText(enchant or wear or "")
-    local ink = enchant and slots.ENCHANT or color or slots.DIM
-    slot.line:SetTextColor(ink[1], ink[2], ink[3])
+    if enchant and not slots.ENCHANT then
+        slot.line:SetTextColor(style.Accent())
+    else
+        local ink = (enchant and slots.ENCHANT) or color or slots.DIM
+        slot.line:SetTextColor(ink[1], ink[2], ink[3])
+    end
     slot.dot:SetShown(wear ~= nil and item.wear ~= nil)
 end)
 
+-- A name a little too long for the room beside its icon: DaylightUI breaks it
+-- onto a second line although the space toward the model is free. Such a name
+-- keeps one line and reaches up to NAME_REACH further toward the model. Only
+-- the two side columns; the weapons below sit next to each other.
+local NAME_REACH = 60
+if slots.FitText then
+    local fitText = slots.FitText
+    local function natural(fs)
+        local ok, w = pcall(function()
+            local v = fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth()
+            if type(v) ~= "number" then v = fs:GetStringWidth() end
+            return v
+        end)
+        return ok and readable(w, "number") and w or nil
+    end
+    -- Main hand, off hand and ranged stand side by side under the model.
+    local bottom = {}
+    for _, key in ipairs(char.Gear.BOTTOM or { "MainHand", "SecondaryHand", "Ranged" }) do bottom[key] = true end
+    function slots.FitText(h, ...)
+        if playerSlots[h] and h.names and h.name and h.px and not bottom[h.key] then
+            local width = h:GetWidth()
+            if readable(width, "number") then
+                local room = math.max(0, width - h.px - (h.gap or slots.GAP or 10))
+                local want = natural(h.name)
+                local reach = want and want > room and want <= room + NAME_REACH and math.ceil(want) + 1 or room
+                if math.abs((h.name:GetWidth() or 0) - reach) > 0.5 then h.name:SetWidth(reach) end
+            end
+        end
+        return fitText(h, ...)
+    end
+end
+
 local paintEnchant = slots.PaintEnchant
-function slots.PaintEnchant(slot, item)
+function slots.PaintEnchant(slot, item, ...)
     if playerSlots[slot] and enabled() and not item.empty then
         local enchant = get("enchants") ~= false and item.enchant
         local wear, color = durability(item)
@@ -327,12 +375,12 @@ function slots.PaintEnchant(slot, item)
         for key, value in pairs(item) do display[key] = value end
         display.enchant = slot.names and enchant and wear or (not slot.names and enchant or nil)
         paintEnchant(slot, display)
-        local ink = slot.names and enchant and color or slots.ENCHANT
-        slot.enchant:SetTextColor(ink[1], ink[2], ink[3])
+        if slot.names and enchant and wear then
+            slot.enchant:SetTextColor(color[1], color[2], color[3])
+        end
         return
     end
-    if playerSlots[slot] then slot.enchant:SetTextColor(unpack(slots.ENCHANT)) end
-    return paintEnchant(slot, item)
+    return paintEnchant(slot, item, ...)
 end
 
 hooksecurefunc(pageAPI, "Build", function(built)

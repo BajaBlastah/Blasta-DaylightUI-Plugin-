@@ -8,20 +8,29 @@ local desc = "Shows thin lines at the expected ticks of known channeled spells."
 german[label] = "Kanal-Ticks anzeigen"
 german[desc] = "Zeigt bei bekannten kanalisierten Zaubern dünne Linien an den erwarteten Ticks."
 
-local function addOption(module, pageID, groupLabel)
+-- The card is looked for on its page first, then on every page: DaylightUI
+-- 1.9.5 moved the player's cast bar card from Cast Bars to the player frame's
+-- page (Cast bar tab).
+local function addTo(module, group, optionLabel, optionDesc)
+    module.defaults.channelTickMarks = false
+    for _, item in ipairs(group.items) do
+        if item.key == "channelTickMarks" then return true end
+    end
+    group.items[#group.items + 1] = {
+        type = "toggle", key = "channelTickMarks", label = optionLabel, desc = optionDesc,
+    }
+    return true
+end
+local function addOption(module, pageID, groupLabel, optionLabel, optionDesc)
     if not (module and type(module.defaults) == "table") then return end
-    for _, page in ipairs(module.options and module.options.pages or {}) do
-        if page.id == pageID then
-            for _, group in ipairs(page.groups or {}) do
-                if group.label == groupLabel and type(group.items) == "table" then
-                    module.defaults.channelTickMarks = false
-                    group.items[#group.items + 1] = {
-                        type = "toggle", key = "channelTickMarks", label = label, desc = desc,
-                    }
-                    return true
+    local pages = module.options and module.options.pages or {}
+    for pass = 1, 2 do
+        for _, page in ipairs(pages) do
+            if pass == 2 or page.id == pageID then
+                for _, group in ipairs(page.groups or {}) do
+                    if group.label == groupLabel and type(group.items) == "table" then return addTo(module, group, optionLabel or label, optionDesc or desc) end
                 end
             end
-            return
         end
     end
 end
@@ -110,9 +119,18 @@ end
 
 local units = DUI:GetModule("UnitFrames")
 local cb = units and units.ns and units.ns.CastBar
-if cb and type(cb.Refresh) == "function" and addOption(units, "castbars", "Player cast bar") then
+-- DaylightUI 2.2.2 introduced native ticks for the player holder only.
+local casts = units and units.defaults and units.defaults.casts
+local nativePlayerTicks = type(casts) == "table" and type(casts.channelTicks) == "boolean"
+local otherLabel = "Channel tick markers for other units"
+local otherDesc = "Show tick markers for other units. Use Channel ticks for your own cast bar."
+german[otherLabel] = "Kanal-Ticks für andere Einheiten"
+german[otherDesc] = "Zeigt Tick-Markierungen für andere Einheiten. Für deinen eigenen Zauberbalken nutze Kanal-Ticks."
+if cb and type(cb.Refresh) == "function" and addOption(units, "castbars", "Player cast bar",
+    nativePlayerTicks and otherLabel or label, nativePlayerTicks and otherDesc or desc) then
     -- This setting is shared by all bars using the unit-frame cast engine.
     hooksecurefunc(cb, "Refresh", function(holder)
+        if nativePlayerTicks and holder.kind == "player" then return end
         draw(holder, enabled(units) and holder.channel and holder.duration and not holder.test and tickCount(holder.unit) or nil)
     end)
     if type(cb.Layout) == "function" then hooksecurefunc(cb, "Layout", relayout) end

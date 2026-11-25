@@ -50,6 +50,9 @@ for en, de in pairs({
     ["Can't be learned by your faction."] = "Für deine Fraktion nicht lernbar.",
     ["Learnable soon"] = "Bald lernbar",
     ["Sorted: skill"] = "Sortiert: Fertigkeit", ["Sorted: category"] = "Sortiert: Kategorie",
+    ["By skill"] = "Fertigkeit", ["By category"] = "Kategorie",
+    ["Sorted by skill. Click to sort by category."] = "Nach Fertigkeit sortiert. Klicken, um nach Kategorie zu sortieren.",
+    ["Sorted by category. Click to sort by skill."] = "Nach Kategorie sortiert. Klicken, um nach Fertigkeit zu sortieren.",
     ["Ranks"] = "Ränge", ["Other"] = "Sonstiges",
     ["Skill points: yellow from %s, green from %s, gray from %s"] = "Fertigkeitspunkte: gelb ab %s, grün ab %s, grau ab %s",
     ["Skill-up chance at %d: %s"] = "Chance auf einen Punkt bei %d: %s",
@@ -521,9 +524,9 @@ local function addRow(s, e, prof)
         value = value and value > 0 and (hex(Style.INK.MONEY) .. DUI.MoneyString(value) .. "|r") or "",
         picked = pickedSpell == r.spell, tooltip = rowTip, blastaLearn = e,
         onClick = function() showDetail(e, prof) end, id = "blasta:learn:" .. tostring(r.spell) })
-    -- A pooled row may come from a learned recipe, which moves its count
-    -- up and shows a skill-up chance. Put it back.
+    -- DaylightUI can reuse a learned recipe row with its chance or profit still visible.
     if b.chance then b.chance:Hide() end
+    if b.profit then b.profit:Hide() end
     b.value:ClearAllPoints()
     b.value:SetPoint("RIGHT", b, "RIGHT", -8, 0)
     lines[r.spell] = b
@@ -542,12 +545,23 @@ local function sortLink(b, shown)
             DUI:Set(ADDON, SORT, sortMode() == "category" and "skill" or "category")
             list.Render(list.pane, true)
         end)
+        -- One word on the header; what it means on hover.
+        l:HookScript("OnEnter", function(self)
+            if not GameTooltip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(T(sortMode() == "category" and "Sorted by category. Click to sort by skill."
+                or "Sorted by skill. Click to sort by category."), 1, 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        l:HookScript("OnLeave", function(self)
+            if GameTooltip and GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+        end)
         sortLinks[b] = l
     end
     if not l then return end
     l:SetShown(shown)
     if not shown then return end
-    l.SetLabel(T(sortMode() == "category" and "Sorted: category" or "Sorted: skill"))
+    l.SetLabel(T(sortMode() == "category" and "By category" or "By skill"))
     l:ClearAllPoints()
     if b.action:IsShown() then l:SetPoint("BOTTOMRIGHT", b.action, "BOTTOMLEFT", -12, 0)
     else l:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 0, 0) end
@@ -608,8 +622,9 @@ local function addGroup(s)
             cost = cost + (trainerCost(e) or 0)
         end
     end
+    -- Just the count: with the price the header ran out of room (the price
+    -- of each recipe is in its details when you click it).
     local value = string.format(T("%d now"), ready)
-    if cost > 0 then value = value .. " · " .. hex(Style.INK.MONEY) .. DUI.MoneyString(cost) .. "|r" end
     local n = group(s, T("Learnable"), FOLD, now, value, prof, search, true)
     if n > 0 and #soon > 0 and s.Gap then s:Gap(8) end
     return n + group(s, T("Learnable soon"), FOLD_SOON, soon, nil, prof, search, n == 0)

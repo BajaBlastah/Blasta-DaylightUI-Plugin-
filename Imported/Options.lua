@@ -31,13 +31,17 @@ add("info", "Experience bar", groupsOf(call(ns.ExperiencePage)))
 add("info", "General", groupsOf(call(ns.InfoPanelSpacingPage)))
 add("info", "Data texts", groupsOf(call(ns.DataTextColorPage)))
 add("info", "Buffs", groupsOf(call(ns.PlayerAuraLayoutPage)))
+add("info", "Buffs", { call(ns.AuraIconCornersGroup) })
+add("info", "Damage meter corner", { call(ns.MeterCornerGroup) })
 add("info", "Buff reminders", groupsOf(call(ns.AuraReminderPage)))
 add("windows", "Group Finder", { ns.DungeonFinderGroup })
 add("windows", "Spellbook", { ns.SpellbookGroup })
 add("windows", "Character", { ns.CharacterPanelGroup })
 add("world", "World map", { ns.MapLevelsGroup })
+add("world", "Chat", { call(ns.ChatCornerGroup) })
 add("world", "Zone title", { call(ns.ZoneTitleExtrasGroup) })
-add("world", "Loot feed", groupsOf(call(ns.LootFeedPage)))
+add("world", "Loot", call(ns.LootSpaceGroups))
+add("world", "Loot", groupsOf(call(ns.LootFeedPage)))
 add("language", "General", groupsOf(call(ns.GeneralPage)))
 add("language", "Profiles", groupsOf(call(ns.ProfileTransferPage)))
 
@@ -148,14 +152,14 @@ local function jump(key, fallback)
     end
 end
 local NEWS = {
-    { "Interrupt hint: an enemy's cast bar lights up while you can interrupt it now.", "blastaKickHint", "plates" },
-    { "Dispel highlight: only what your class removes, and only while you can cast your dispel.", "blastaDispelUsable", "units" },
-    { "Character window: health and power as bars on top of the stats.", "characterPanel.statsBars", "windows" },
-    { "Design mode: drag the raid marker on target and focus, and the time on nameplate cast bars.", "castTimeX", "plates" },
-    { "Finisher damage color works again with DaylightUI 1.9.4.", "colors.blastaFinisherTintEnabled", "auras" },
-    { "Reset this tab: at the end of every tab, resets only that tab.", nil, nil },
-    { "/blasta check: lists Blasta parts that don't work with your DaylightUI version.", nil, nil },
+    { "Compact equipment tooltips and improved comparisons", "blastaStyle", "tooltips" },
+    { "Make room for loot", "blastaLootSpace", "world" },
+    { "Loot item icon border", "blastaLootIconBorder", "world" },
+    { "Bag font sizes and category selling in DaylightUI's Bags settings" },
 }
+ns.German["Compact equipment tooltips and improved comparisons"] = "Kompakte Ausrüstungstooltips und verbesserte Vergleiche"
+ns.German["Bag font sizes and category selling in DaylightUI's Bags settings"] =
+    "Schriftgrößen und Kategorienverkauf in DaylightUIs Tascheneinstellungen"
 local version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version")
 local news = { label = "New in Blasta " .. tostring(version or ""), items = {} }
 if ns.German then ns.German[news.label] = "Neu in Blasta " .. tostring(version or "") end
@@ -189,6 +193,7 @@ for _, page in ipairs(pages) do
     for _, group in ipairs(page.groups) do
         for _, row in ipairs(group.items) do
             if type(row.key) == "string" then known[row.key] = true end
+            for _, key in ipairs(row.blastaDesignerKeys or {}) do known[key] = true end
         end
         local source = bySource[group.blastaRawTab or ""]
         local tab = group.tab or ""

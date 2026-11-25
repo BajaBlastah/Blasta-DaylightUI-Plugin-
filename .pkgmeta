@@ -5,3 +5,4 @@ ignore:
   - .github
   - .gitattributes
   - .gitignore
+  - Claude outputs

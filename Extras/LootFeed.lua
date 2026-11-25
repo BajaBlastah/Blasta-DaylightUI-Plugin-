@@ -86,6 +86,8 @@ local function createRow()
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 7, 0)
     row.name:SetWordWrap(false)
     row.value = text(row, 12, "RIGHT")
+    row.value:SetShadowColor(0, 0, 0, 0)
+    row.value:SetWordWrap(false)
     row:EnableMouse(true)
     row:RegisterForDrag("LeftButton")
     row:SetScript("OnDragStart", function() if positioning then root:StartMoving() end end)
@@ -169,11 +171,7 @@ end
 
 local function animateArrival(row, stacked)
     local motion = DUI.Motion
-    if not motion.On() then return end
-    if stacked then
-        motion.Bump(row.value, 1.15, motion.FAST)
-        return
-    end
+    if stacked or not motion.On() then return end
 
     local arrival = arrivalMode()
     if arrival == "rise" then
@@ -196,7 +194,7 @@ local function detail(entry, now, elegant)
     -- A single item shows no quantity, only the bag total.
     local parts = {}
     if (tonumber(entry.count) or 1) > 1 or not entry.bagTotal then
-        parts[1] = "|cff8f8f8fx|r" .. entry.count
+        parts[1] = "x" .. entry.count
     end
     if option("delta") and entry.delta and now - entry.updated < 0.9 then
         parts[#parts + 1] = (elegant and "|cffb6b6b6+" or "|cffd3ff52+") .. entry.delta .. "|r"
@@ -208,7 +206,7 @@ local function detail(entry, now, elegant)
         if progress < 1 and not gradientPreview and DUI.Motion.On() then
             total = math.floor(start + (total - start) * progress + .5)
         end
-        parts[#parts + 1] = "|cff8f8f8f(" .. total .. ")|r"
+        parts[#parts + 1] = "|cffc8cdd3(" .. total .. ")|r"
     end
     return table.concat(parts, " ")
 end
@@ -314,7 +312,7 @@ local function paintRow(row, entry, index, count, now, elegant)
     if entry.money then
         row.value:SetPoint("LEFT", row.icon, "RIGHT", elegant and 7 or 10, 0)
     else
-        row.value:SetPoint("RIGHT", row, "RIGHT", elegant and -2 or -cut - 8, 0)
+        row.value:SetPoint("RIGHT", row, "RIGHT", DUI.Pixel.Snap(row, elegant and -6 or -cut - 8), 0)
     end
     row.value:SetText(detail(entry, now, elegant))
     row.name:ClearAllPoints()
@@ -886,7 +884,7 @@ elegantGradient.hidden = function() return feedMode() ~= "elegant" end
 
 local arrival = control("dropdown", "arrival", "Loot arrival animation")
 arrival.blastaSince = "1.5"
-arrival.desc = "Choose how new loot rows appear. Stacked loot briefly pulses the quantity."
+arrival.desc = "Choose how new loot rows appear."
 arrival.order = { "right", "rise", "sweep" }
 arrival.values = { right = "Slide in from the right", rise = "Rise from below", sweep = "Quality light sweep" }
 arrival.hidden = function() return feedMode() ~= "blasta" end

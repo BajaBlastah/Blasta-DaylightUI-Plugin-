@@ -8,9 +8,13 @@ Blasta's bundled graphics were generated with ChatGPT.
 
 The optional Blasta loot feed uses the installed DaylightUI QoL module's loot parsers and item metadata helpers at runtime. Blasta supplies its own feed layout, history and playback.
 
-## What's Training? recipe data
+## What's Training? data
+
+`Data/Training` includes MIT-licensed data from What's Training? 11.4.9 ([upstream project](https://github.com/fusionpit/WhatsTraining)), taken from `Classes/Camelot` and `Classes/WeaponSkills.lua`. The imported Lua files use Blasta's private training namespace. The shared weapon data omits the original trainer-zone UI helper. `Data/Training/LICENSE` preserves the upstream notice, reproduced below. Blasta's data provider is independent code and uses the separately installed DaylightUI book at runtime.
 
 The files under `Data/Recipes` are the profession recipe data of What's Training? (`Crafting/Recipes/Camelot`), used under the MIT License below. Only their namespace was changed (they fill `extras.TrainerRecipes`) and the faction name lookups were replaced with plain keys. Blasta's learnable recipe list, detail page and their logic are Blasta's own code.
+
+`Data/Training/TrainerFactions.lua` contains the Forever trainer-faction mappings from the same release. Blasta's price comparison is implemented separately and marks the results as estimates.
 
 ```
 MIT License

@@ -55,8 +55,8 @@ L["Blasta loot feed"] = "Blasta-Beutefeed"
 L["Loot feed style"] = "Beutefeed-Stil"
 L["Preview loot feed"] = "Beutefeed testen"
 L["Loot arrival animation"] = "Einblendanimation"
-L["Choose how new loot rows appear. Stacked loot briefly pulses the quantity."] =
-    "Legt fest, wie neue Beutezeilen erscheinen. Beim Stapeln pulsiert die Menge kurz."
+L["Choose how new loot rows appear."] =
+    "Legt fest, wie neue Beutezeilen erscheinen."
 L["Slide in from the right"] = "Von rechts einschieben"
 L["Rise from below"] = "Von unten aufsteigen"
 L["Fade in"] = "Sanft einblenden"
@@ -309,6 +309,13 @@ L["Show party cast bars"] = "Gruppen-Zauberleisten anzeigen"
 L["Craft completion sweep"] = "Lichteffekt nach der Herstellung"
 L["Sweep a golden highlight across the recipe row after each successful craft."] = "Nach der Herstellung gleitet ein dezenter goldener Schimmer über die Rezeptzeile."
 L["Auction price"] = "Auktionspreis"
+L["Auction"] = "Auktionspreis"
+L["Item Level"] = "Gegenstandsstufe"
+L["Crafting Reagent"] = "Handwerksmaterial"
+L["the whole stack"] = "gesamter Stapel"
+L["Seen %s ago"] = "Zuletzt gesehen vor %s"
+L["Auction House cut"] = "Auktionshausgebühr"
+L["Sells for"] = "Verkaufserlös"
 L["No auction data"] = "Keine Auktionsdaten"
 
 L["Tooltip style"] = "Tooltip-Stil"
@@ -387,6 +394,30 @@ L["Consumable bars"] = "Verbrauchsgüter-Leisten"
 L["Blasta nameplates"] = "Nameplates"
 L["Left edge direction"] = "Richtung der linken Kante"
 L["Right edge direction"] = "Richtung der rechten Kante"
+L["Crowd control alert as a ring"] = "Kontrollverlust als Ring"
+L["Name text size"] = "Schriftgröße des Namens"
+L["How big the name under the ring is. 0 uses DaylightUI's size."] = "Wie groß der Name unter dem Ring ist. 0 nimmt DaylightUIs Größe."
+L["Time text size"] = "Schriftgröße der Zeit"
+L["How big the time on the icon is. 0 grows it with the icon."] = "Wie groß die Restzeit auf dem Symbol ist. 0 wächst mit dem Symbol."
+L["Crowd control alert"] = "Kontrollverlust"
+L["Ring icon size"] = "Symbolgröße im Ring"
+L["How big the icon in the ring is. The ring grows with it."] = "Wie groß das Symbol im Ring ist. Der Ring wächst mit."
+L["Ring line"] = "Ringlinie"
+L["How thick the ring is."] = "Wie dick der Ring ist."
+L["Ring color"] = "Ringfarbe"
+L["Your accent color, your class's color, or one you pick."] = "Deine Akzentfarbe, deine Klassenfarbe oder eine, die du auswählst."
+L["Custom ring color"] = "Eigene Ringfarbe"
+L["The ring's color when Ring color is One color."] = "Die Farbe des Rings, wenn bei Ringfarbe „Eine Farbe“ gewählt ist."
+L["Ring track opacity"] = "Deckkraft der Ringspur"
+L["How dark the part of the ring that has already run down is."] = "Wie dunkel der bereits abgelaufene Teil des Rings ist."
+L["Show the effect's name"] = "Namen des Effekts zeigen"
+L["The name (Stunned, Feared...) under the ring."] = "Der Name (Betäubt, Furcht ...) unter dem Ring."
+L["Class color"] = "Klassenfarbe"
+L["One color"] = "Eine Farbe"
+L["The icon round in the middle, with the time on it and a ring around it that runs down with the effect. The name sits under it."] =
+    "Das Symbol rund in der Mitte, die Restzeit darauf und ein Ring drumherum, der mit dem Effekt abläuft. Der Name steht darunter."
+L["Which corner of the bar's right end projects. Straight is DaylightUI's Health bar angled end switched off."] =
+    "Welche Ecke am rechten Ende des Balkens vorsteht. Gerade entspricht DaylightUIs „Schräges Ende“ ausgeschaltet."
 L["Top corner projects"] = "Obere Ecke steht vor"
 L["Bottom corner projects"] = "Untere Ecke steht vor"
 L["Preview cast bar entrance"] = "Ausfahren der Zauberleiste testen"
@@ -539,6 +570,8 @@ L["Blasta sample enemy details"] = "Stufe 36 · Elementar"
 L["Blasta sample dust"] = "Seltsamer Staub"
 L["Disenchant results"] = "Entzauberungsergebnisse"
 L["Average disenchant value"] = "Ø Entzauberungswert"
+L["Average disenchant value (at least)"] = "Ø Entzauberungswert (mind.)"
+L["No material prices"] = "Keine Materialpreise"
 L["Show disenchant results"] = "Entzauberungsergebnisse anzeigen"
 L["Show disenchant information added by addons such as DisenchantBuddy or Auctionator."] = "Zeigt Entzauberungsinfos von Addons wie DisenchantBuddy oder Auctionator."
 L["Sell price"] = "Verkaufspreis"
@@ -688,6 +721,13 @@ L["Nameplate debuff and crowd control icons as tall as they are wide, unless the
 L["1 px aura borders"] = "1-px-Aurarahmen"
 L["Draws the border around nameplate buffs and debuffs one pixel thick."] =
     "Zeichnet den Rahmen um Buffs und Debuffs auf Nameplates nur einen Pixel breit."
+L["Fit debuffs to the nameplate"] = "An Nameplate anpassen"
+L["Your debuffs in rows centered on the health bar: as many per row and as many rows as set below. When a full row at your debuff size would be wider than the bar, the icons shrink until it fits edge to edge. Replaces Max debuffs shown."] =
+    "Deine Debuffs in Reihen mittig über dem Lebensbalken: so viele pro Reihe und so viele Reihen wie unten eingestellt. Wäre eine volle Reihe in deiner Debuff-Größe breiter als der Balken, werden die Symbole verkleinert, bis sie genau auf Kante sitzen. Ersetzt „Max. angezeigte Debuffs“."
+L["Debuffs per row"] = "Debuffs pro Reihe"
+L["How many debuffs sit side by side in a row."] = "Wie viele Debuffs nebeneinander in einer Reihe stehen."
+L["Debuff rows"] = "Debuff-Reihen"
+L["How many rows of debuffs at most. Rows stack upward from the bar."] = "Wie viele Reihen Debuffs höchstens. Die Reihen stapeln sich vom Balken nach oben."
 L["Draws the border around unit frame buffs and debuffs one pixel thick. Applies to every unit frame."] =
     "Zeichnet den Rahmen um Buffs und Debuffs der Einheitenrahmen nur einen Pixel breit. Gilt für alle Einheitenrahmen."
 L["Player buff size"] = "Größe der Spieler-Buffs"
@@ -859,6 +899,29 @@ for k, v in pairs({ Gold = "Gold", Text = "Text", Layout = "Anordnung", Chat = "
 end
 
 local news = {
+    ["Spell macros on your action bars get Blasta's spell tooltip."] = "Zauber-Makros auf deinen Aktionsleisten bekommen Blastas Zauber-Tooltip.",
+    ["Experience bar: border, corners and shadow now come from DaylightUI's own settings."] =
+        "Erfahrungsleiste: Rahmen, Ecken und Schatten kommen jetzt aus DaylightUIs eigenen Einstellungen.",
+    ["Talent trees: every row shows the points it needs, and each tree how many more open the next row."] =
+        "Talentbäume: Jede Reihe zeigt die nötigen Punkte, jeder Baum, wie viele noch bis zur nächsten Reihe fehlen.",
+    ["Nameplate cast bars: text size and position for the spell name and the cast time, and the bar's height."] =
+        "Nameplate-Zauberleisten: Textgröße und Position für Zaubername und Zauberzeit, dazu die Höhe der Leiste.",
+    ["Whispers: the conversation slides out of the chat's edge, as part of the chat."] =
+        "Flüstern: Das Gespräch fährt aus dem Chat-Rand, als Teil des Chats.",
+    ["Crowd control ring: the icon fills the ring, and nothing jumps when the effect ends."] =
+        "Kontrollverlust-Ring: Das Symbol füllt den Ring, und nichts springt mehr, wenn der Effekt endet.",
+    ["Nameplate aura heights stay as you set them."] = "Die Höhen der Nameplate-Auren bleiben, wie du sie einstellst.",
+    ["Healing items in the tooltip: healing and spell damage on their own lines."] =
+        "Heilgegenstände im Tooltip: Heilung und Zauberschaden in eigenen Zeilen.",
+    ["Recipes no longer stay red in the bags after a skill-up."] = "Rezepte bleiben nach einem Skill-Up nicht mehr rot in den Taschen.",
+    ["Professions panel: all your professions with skill and what's next, built into the profession window."] =
+        "Berufsleiste: alle deine Berufe mit Fertigkeit und nächstem Schritt, fest im Berufsfenster.",
+    ["Learnable recipes in the profession window, colored by skill-up chance, sorted by skill or category."] =
+        "Lernbare Rezepte im Berufsfenster, gefärbt nach Skillchance, sortiert nach Fertigkeit oder Kategorie.",
+    ["Nameplates: fit debuffs to the bar, with debuffs per row and rows."] =
+        "Nameplates: Debuffs an die Nameplate anpassen, mit Debuffs pro Reihe und Reihen.",
+    ["Nameplates: name and debuffs centered on the bar as it's drawn."] =
+        "Nameplates: Name und Debuffs mittig auf dem Balken, so wie er gezeichnet ist.",
     ["Interrupt hint: an enemy's cast bar lights up while you can interrupt it now."] =
         "Unterbrechungs-Hinweis: Die Zauberleiste eines Gegners leuchtet, solange du sie jetzt unterbrechen kannst.",
     ["Dispel highlight: only what your class removes, and only while you can cast your dispel."] =

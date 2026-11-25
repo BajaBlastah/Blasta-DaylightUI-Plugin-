@@ -31,14 +31,11 @@ for _, unit in ipairs({ "player", "target", "focus", "party", "arena" }) do
                 extras.AddSetting(mod, position.key, row, true)
             end
         end
+        -- Keep one pair of sliders. Blasta can also apply these offsets
+        -- while the badge is on the portrait ring.
         for axis, desc in pairs({ X = "Nudges the level badge sideways.", Y = "Nudges the level badge up or down." }) do
-            local native, items = extras.FindSetting(mod, prefix .. "level" .. axis)
-            if native then
-                local row = {}
-                for key, value in pairs(native) do row[key] = value end
-                row.disabled, row.desc = position.disabled, desc
-                items[#items + 1] = row
-            end
+            local native = extras.FindSetting(mod, prefix .. "level" .. axis)
+            if native then native.disabled, native.desc = position.disabled, desc end
         end
     end
 end

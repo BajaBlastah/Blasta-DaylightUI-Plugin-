@@ -165,4 +165,29 @@ function module.OnEnable(mod, ...)
     return enable(mod, ...)
 end
 
+-- Recipes stayed red after a skill-up: DaylightUI checks again on the frame
+-- after the skill changes, but the game can still describe the recipe with the
+-- old skill then, and that answer is kept. Blasta asks once more a moment
+-- later (also after a skill-up message and when a profession window closes),
+-- so the red tint follows the new skill.
+do
+    local ns = module.ns
+    local pending
+    local function again()
+        pending = nil
+        if type(items.ForgetUsable) == "function" and type(ns.RecheckUnusable) == "function" then
+            items.ForgetUsable()
+            pcall(ns.RecheckUnusable)
+        end
+    end
+    local function later()
+        if pending or not (C_Timer and C_Timer.After) then return end
+        pending = true
+        C_Timer.After(1.5, again)
+    end
+    for _, event in ipairs({ "SKILL_LINES_CHANGED", "NEW_RECIPE_LEARNED", "CHAT_MSG_SKILL", "TRADE_SKILL_CLOSE", "CRAFT_CLOSE" }) do
+        pcall(DUI.RegisterEvent, event, later)
+    end
+end
+
 blasta.Loaded("BagBorders")

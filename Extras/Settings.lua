@@ -25,6 +25,7 @@ end
 for _, name in ipairs(modules) do rememberRows(name) end
 rememberRows("InfoPanel")
 rememberRows("Buffs")
+rememberRows("Chat")
 
 local function notice(label, hidden)
     local widgets = DUI.Widgets
@@ -175,13 +176,6 @@ function extras.IsUnitFramePreview(frame)
 end
 
 
-local function nativePage(name, id)
-    local mod = DUI:GetModule(name)
-    for _, page in ipairs(mod and mod.options and mod.options.pages or {}) do
-        if page.id == id then return page, mod end
-    end
-end
-
 -- Daylight's own previews show Blasta's additions: the unit frame previews
 -- count as previews for Blasta's drawing (extras.IsUnitFramePreview), and
 -- the portrait icons and aura bars Blasta adds can be dragged in Daylight's
@@ -268,7 +262,7 @@ extras.MENU = {
 local MODULE_PAGE = {
     Nameplates = "plates", UnitFrames = "units", ActionBars = "bars", Tooltip = "tooltips",
     InfoPanel = "info", Buffs = "info", Bags = "windows", Professions = "windows", Quests = "windows",
-    QoL = "world", Skins = "world",
+    QoL = "world", Skins = "world", Chat = "world",
 }
 -- Pages the older Blasta menus named in a row's blastaDestination.
 local OLD_PAGE = { Auras = "auras", UnitFrames = "units", Afk = "world" }
@@ -276,7 +270,7 @@ local OLD_PAGE = { Auras = "auras", UnitFrames = "units", Afk = "world" }
 local NO_TABS = { tooltips = true }
 local AURA_GROUP = { Buffs = true, Debuffs = true, Auras = true }
 local SCANNED = { "Nameplates", "UnitFrames", "ActionBars", "Tooltip", "QoL", "Professions", "Quests", "Bags",
-    "Skins", "InfoPanel", "Buffs" }
+    "Skins", "InfoPanel", "Buffs", "Chat" }
 
 local function auraRow(group, item)
     if AURA_GROUP[group.label] then return true end
@@ -297,7 +291,7 @@ local function worldTab(label)
     if text:find("flight", 1, true) or text:find("breath", 1, true) or text:find("mirror", 1, true)
         or text:find("timer", 1, true) then return "Flight & breath bars" end
     if text:find("map", 1, true) then return "World map" end
-    if text:find("loot", 1, true) then return "Loot feed" end
+    if text:find("loot", 1, true) then return "Loot" end
     if text:find("zone", 1, true) then return "Zone title" end
     if text:find("afk", 1, true) or text:find("away", 1, true) then return "AFK screen" end
     return label
@@ -332,6 +326,8 @@ local function route(mod, source, group, item)
         else tab = worldTab(group.label) or source.label end
     end
     if group.blastaTab then tab = group.blastaTab end
+    if name == "Chat" then tab = "Chat" end
+    if where == "world" and (tab == "Loot feed" or tab == "Loot Roll Window") then tab = "Loot" end
     if NO_TABS[where] then tab = nil end
     if type(label) ~= "string" or label == "" then label = type(source.label) == "string" and source.label or "Settings" end
     if tab ~= nil and (type(tab) ~= "string" or tab == "") then tab = nil end
@@ -389,8 +385,26 @@ end
 
 local function remember(dest, tab, source, group, mod)
     local key = tab or ""
-    if dest.samples[key] then return end
     local sample = group and group.blastaSample
+    if tab == "Chat" and mod and mod.name == "Chat" and (sample or type(source.sample) == "function") then
+        local reference = sample or source
+        local entry = dest.samples[key] or { previews = {} }
+        if not entry.previews then
+            entry.label = "Chat"
+            entry = { previews = { entry } }
+        end
+        dest.samples[key] = entry
+        for _, preview in ipairs(entry.previews) do
+            if preview.reference == reference then return end
+        end
+        entry.previews[#entry.previews + 1] = {
+            reference = reference, sample = sample or source.sample,
+            label = sample and group.label or source.label,
+            page = not sample and source or nil, mod = not sample and mod.name or nil,
+        }
+        return
+    end
+    if dest.samples[key] then return end
     if sample then
         dest.samples[key] = { sample = sample }
     elseif type(source.sample) == "function" then
@@ -527,6 +541,7 @@ function extras.TabbedSample(byTab, known, fallback)
     return function(parent)
         local holder = CreateFrame("Frame", nil, parent)
         local made, current, currentEntry = {}, nil, nil
+        local chosen, activePreviews = {}, nil
         local s = { frame = holder }
         local function wanted()
             local panel = DUI.OptionsPanel
@@ -546,6 +561,8 @@ function extras.TabbedSample(byTab, known, fallback)
         end
         function s.Refresh(width, room)
             local source = wanted()
+            activePreviews = source and source.previews
+            if activePreviews then source = activePreviews[chosen[activePreviews] or 1] end
             local inner = source and instance(source)
             if current and current ~= inner then current.frame:Hide() end
             current, currentEntry = inner, source
@@ -581,6 +598,7 @@ function extras.TabbedSample(byTab, known, fallback)
                 local m = part.move
                 if m and (m.xKey or m.yKey) and ((m.xKey and known and known[m.xKey]) or (m.yKey and known and known[m.yKey])) then
                     movable = (not m.xKey or route(m.xKey)) and (not m.yKey or route(m.yKey))
+                    if movable and m.spotKey and known[m.spotKey] then route(m.spotKey) end
                 end
                 local size = part.size
                 if movable and size and type(size.keys) == "table" then
@@ -597,10 +615,22 @@ function extras.TabbedSample(byTab, known, fallback)
             return out
         end
         function s.Views()
+            if activePreviews and #activePreviews > 1 then
+                local views = {}
+                for i, preview in ipairs(activePreviews) do
+                    views[i] = { key = i, label = extras.Translate(preview.label),
+                        on = i == (chosen[activePreviews] or 1) }
+                end
+                return views
+            end
             if current and current.Views then return current.Views() end
         end
-        function s.SetView(...)
-            if current and current.SetView then return current.SetView(...) end
+        function s.SetView(key, ...)
+            if activePreviews and #activePreviews > 1 then
+                if activePreviews[key] then chosen[activePreviews] = key end
+            elseif current and current.SetView then
+                return current.SetView(key, ...)
+            end
         end
         return s
     end

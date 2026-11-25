@@ -86,70 +86,18 @@ end
 
 addTargetOptions()
 
+-- Nameplate names: DaylightUI shortens them itself since 1.9.7 (Nameplates >
+-- Name > Shorten long names, enemy and friendly plates). Blasta's own switch
+-- for it is gone; one that was on moves over once.
 local module = DUI:GetModule("Nameplates")
-local ns = module and module.ns
-if not (ns and ns.Plate and type(ns.Plate.PlaceSpots) == "function"
-    and type(DUI.UnitName) == "function" and type(module.defaults) == "table") then return end
-
-local items
-for _, page in ipairs(module.options and module.options.pages or {}) do
-    if page.id == "bars" then
-        for _, group in ipairs(page.groups or {}) do
-            if group.label == "Name" then items = group.items; break end
-        end
-        break
-    end
-end
-if type(items) ~= "table" then return end
-
-local toggle, limitKey = "shortenPlateNames", "plateNameLimit"
-local label, limitLabel = "Shorten nameplate names", "Maximum name length"
-local desc = "Shortens long names to initials and the last word, and keeps the name on one line."
-german[label] = "Namen kürzen"
-german[limitLabel] = "Maximale Namenslänge"
-german[desc] = "Kürzt lange Namen auf Initialen und das letzte Wort und zeigt sie einzeilig an."
-module.defaults[toggle] = false
-module.defaults[limitKey] = 19
-items[#items + 1] = { type = "toggle", key = toggle, label = label, desc = desc }
-items[#items + 1] = {
-    type = "slider", key = limitKey, label = limitLabel, min = 10, max = 40, step = 1,
-    disabled = function(get) return not get(toggle) end,
-}
-
-local getName = DUI.UnitName
-local cache, cacheSize, previousLimit = {}, 0, nil
-function DUI.UnitName(unit, element)
-    local name = getName(unit, element)
-    local cfg = ns.cfg
-    if element ~= "nameplates" or not (cfg and cfg[toggle]) or type(name) ~= "string"
-        or (issecretvalue and issecretvalue(name)) then return name end
-    local limit = math.max(10, math.min(40, math.floor(tonumber(cfg[limitKey]) or 19)))
-    if previousLimit ~= limit then
-        cache, cacheSize, previousLimit = {}, 0, limit
-    end
-    if cache[name] then return cache[name] end
-    if cacheSize >= 256 then cache, cacheSize = {}, 0 end
-    local result = shorten(name, limit)
-    cache[name], cacheSize = result, cacheSize + 1
-    return result
-end
-
-local wrapped = setmetatable({}, { __mode = "k" })
-local place = ns.Plate.PlaceSpots
-function ns.Plate.PlaceSpots(plate)
-    local name = plate.name
-    if name and name.SetWordWrap then
-        if ns.cfg and ns.cfg[toggle] then
-            if wrapped[name] == nil then
-                wrapped[name] = not name.CanWordWrap or name:CanWordWrap()
-                name:SetWordWrap(false)
-            end
-        elseif wrapped[name] ~= nil then
-            name:SetWordWrap(wrapped[name])
-            wrapped[name] = nil
-        end
-    end
-    return place(plate)
+if module and type(module.defaults) == "table" and module.defaults.shortNames ~= nil and DUI.On then
+    DUI.On("Login", function()
+        local db = module.db
+        if type(db) ~= "table" or db.shortenPlateNames == nil then return end
+        local was = db.shortenPlateNames == true
+        db.shortenPlateNames, db.plateNameLimit = nil, nil
+        if was then pcall(DUI.Set, DUI, "Nameplates", "shortNames", true) end
+    end)
 end
 
 blasta.Loaded("NameplateNames")

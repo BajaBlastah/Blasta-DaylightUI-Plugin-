@@ -5,7 +5,7 @@
 --   * the time on a nameplate's cast bar.
 local ADDON, extras = ...
 local DUI = DaylightUI
-local VERSION = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version") or nil
+local VERSION = "1.9.8"
 local german = extras.German
 
 german["Raid marker left / right"] = "Zielmarkierung links / rechts"
@@ -56,7 +56,9 @@ local Cast = ns and ns.Cast
 if Cast and Cast.Layout and plates.defaults and extras.FindSetting(plates, "castHeight")
     and not extras.HasSetting(plates, "castTimeX") then
     plates.defaults.castTimeX, plates.defaults.castTimeY = 0, 0
-    local anchor = "castHeight"
+    -- After the spell name's rows on Blasta's cast bar tab (NameplateShape),
+    -- else after DaylightUI's cast bar height.
+    local anchor = extras.FindSetting(plates, "blastaCastTextY") and "blastaCastTextY" or "castHeight"
     for _, axis in ipairs({ "X", "Y" }) do
         local row = { type = "slider", key = "castTime" .. axis, min = -60, max = 60, step = 1, unit = "px",
             label = axis == "X" and "Cast time left / right" or "Cast time up / down",
@@ -66,18 +68,9 @@ if Cast and Cast.Layout and plates.defaults and extras.FindSetting(plates, "cast
         anchor = row.key
     end
 
-    hooksecurefunc(Cast, "Layout", function(p)
-        local t = p and p.cast and p.cast.time
-        local cfg = ns.cfg
-        if not (t and cfg) then return end
-        local dx, dy = tonumber(cfg.castTimeX) or 0, tonumber(cfg.castTimeY) or 0
-        if dx == 0 and dy == 0 then return end
-        local point, relative, relativePoint, x, y = t:GetPoint(1)
-        if point then
-            t:ClearAllPoints()
-            t:SetPoint(point, relative, relativePoint, (x or 0) + dx, (y or 0) + dy)
-        end
-    end)
+    -- The offset itself is applied where the cast bar's text is laid out
+    -- (NameplateShape): reading the time's position back (GetPoint) is
+    -- refused on a nameplate under restrictions.
     -- A "Cast time" part on the nameplate preview, dragged like the party
     -- resource bar (xKey/yKey): it moves from where it sits now.
     function extras.AddPlateCastTimeMove(parts)

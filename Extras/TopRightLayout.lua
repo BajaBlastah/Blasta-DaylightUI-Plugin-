@@ -57,6 +57,22 @@ if not (bar and debuffs and widgets and widgets.Radius and bar.StyleButton and d
 
 local defaults = module.defaults.settings
 defaults.blastaSquare = false
+defaults.blastaEvenSpacing = true
+local stableMotion = type(buffs.GetSetting) == "function" and buffs.Feel and buffs.Feel.TuneSlide
+if stableMotion then
+    defaults.blastaStableAuraIcons = true
+    extras.German["Keep minimap aura icons still"] = "Einblendanimation an der Minikarte abschalten"
+    extras.German["Suppress replayed slide animations when Daylight refreshes the buff and debuff bars."] =
+        "Unterdrückt die wiederholte Einblendanimation, wenn Daylight die Buff- und Debuffleisten aktualisiert."
+    local get = buffs.GetSetting
+    function buffs.GetSetting(key, ...)
+        if key == "newGlow" and get("blastaStableAuraIcons") ~= false then return false end
+        return get(key, ...)
+    end
+end
+extras.German["Even buff spacing"] = "Gleichmäßige Buff-Abstände"
+extras.German["Use the same horizontal gap between all buffs, including category boundaries."] =
+    "Verwendet zwischen allen Buffs denselben horizontalen Abstand, auch an Kategoriegrenzen."
 defaults.debuff.blastaSquare = false
 defaults.debuff.blastaUnderBuffs = false
 defaults.debuff.blastaBuffGap = 14
@@ -128,6 +144,75 @@ local function track(instance)
 end
 track(bar)
 track(debuffs)
+if bar.Setting then
+    local settingOf = bar.Setting
+    function bar:Setting(key)
+        if key == "categoryGap" and settingOf(self, "blastaEvenSpacing") ~= false then return 0 end
+        return settingOf(self, key)
+    end
+end
+
+-- Discovering a spell normally rewrites every candidate filter, which makes
+-- the client re-show the whole bar. Update only the affected categories.
+if buffs.Fire and buffs.Spells and buffs.Spells.Sets and buffs.Auras and buffs.Auras.BuffFilters
+    and buffs.Categories and buffs.Categories.Order and bar.ApplyGroups and bar.MarkDirty and bar.RefreshCounts then
+    local applied, frame, learning, queued = {}, nil, false, false
+    local function filters()
+        local sets = buffs.Spells.Sets()
+        local out = {}
+        for _, id in ipairs(buffs.Categories.Order()) do
+            if bar.groups and bar.groups[id] then out[id] = buffs.Auras.BuffFilters(id, sets) end
+        end
+        return out
+    end
+    local function sameSet(a, b)
+        if a == b then return true end
+        if not (a and b) then return false end
+        for id in pairs(a) do if not b[id] then return false end end
+        for id in pairs(b) do if not a[id] then return false end end
+        return true
+    end
+    hooksecurefunc(bar, "ApplyGroups", function()
+        frame, applied = bar.frame, filters()
+    end)
+    local fire, markDirty = buffs.Fire, bar.MarkDirty
+    function buffs.Fire(event, ...)
+        if event ~= "SPELLS_CHANGED" then return fire(event, ...) end
+        local previous = learning
+        learning = true
+        local ok, err = pcall(fire, event, ...)
+        learning = previous
+        if not ok then error(err, 0) end
+    end
+    function bar:MarkDirty()
+        if not learning or not frame or frame ~= self.frame or not frame.SetAuraGroupCandidateFilters then
+            return markDirty(self)
+        end
+        if queued then return end
+        queued = true
+        C_Timer.After(0, function()
+            queued = false
+            if not self.frame or self.scheduled then return end
+            if frame ~= self.frame then markDirty(self); return end
+            self:InvalidateMembers()
+            local nextFilters = filters()
+            for id, nextFilter in pairs(nextFilters) do
+                local old = applied[id]
+                if not old then markDirty(self); return end
+                if not (sameSet(old.includeSpellIDs, nextFilter.includeSpellIDs)
+                    and sameSet(old.excludeSpellIDs, nextFilter.excludeSpellIDs)) then
+                    if buffs.Feel and buffs.Feel.Hush then buffs.Feel.Hush() end
+                    if not pcall(frame.SetAuraGroupCandidateFilters, frame, id, nextFilter) then
+                        markDirty(self)
+                        return
+                    end
+                end
+            end
+            applied = nextFilters
+            self:RefreshCounts()
+        end)
+    end
+end
 if type(buffs.CreateBar) == "function" then
     local createBar = buffs.CreateBar
     function buffs.CreateBar(...) return track(createBar(...)) end
@@ -209,8 +294,13 @@ local function placeDebuffs()
     local reservedHeight = (reservedBuffDepth() + down) * scale
     local height = math.max(reservedHeight, lastHeight, measured and depth or 0, weaponHeight * scale)
     local gap = tonumber(DUI:Get(module.name, "settings.debuff.blastaBuffGap")) or 14
+    local point, anchor, relative, x, y = debuffs.holder:GetPoint(1)
+    local corner, attach = debuffs:Corner(), bar:Corner()
+    local offset = -height - gap
+    if point == corner and anchor == bar.holder and relative == attach and readableNumber(x) and x == 0
+        and readableNumber(y) and math.abs(y - offset) < 0.05 then return end
     debuffs.holder:ClearAllPoints()
-    debuffs.holder:SetPoint(debuffs:Corner(), bar.holder, bar:Corner(), 0, -height - gap)
+    debuffs.holder:SetPoint(corner, bar.holder, attach, 0, offset)
 end
 
 local function queuePlacement()
@@ -251,6 +341,10 @@ DUI.On("SettingChanged", function(scope, key)
     if scope ~= module.name then return end
     if key == "settings.blastaSquare" then bar:Restyle() end
     if key == "settings.debuff.blastaSquare" then debuffs:Restyle() end
+    if key == "settings.blastaStableAuraIcons" then
+        bar:Restyle()
+        debuffs:Restyle()
+    end
     if key == "settings.debuff.blastaUnderBuffs" then
         buffs.PlaceAnchor()
         if not underBuffs() then lastHeight = 0 end
@@ -265,11 +359,18 @@ end)
 function extras.PlayerAuraLayoutPage()
     local rows = {
         setting(module, { type = "toggle", key = "settings.blastaSquare", label = "Square player buff borders" }, false),
+        setting(module, { type = "toggle", key = "settings.blastaEvenSpacing", blastaSince = "2.0", label = "Even buff spacing",
+            desc = "Use the same horizontal gap between all buffs, including category boundaries." }, true),
         setting(module, { type = "toggle", key = "settings.debuff.blastaSquare", label = "Square player debuff borders" }, false),
         setting(module, { type = "toggle", key = "settings.debuff.blastaUnderBuffs", label = "Place debuffs under buffs" }, false),
         setting(module, { type = "slider", key = "settings.debuff.blastaBuffGap", label = "Gap below buffs",
             min = 0, max = 80, step = 1, unit = "px", disabled = function() return not underBuffs() end }, 14),
     }
+    if stableMotion then
+        table.insert(rows, 1, setting(module, { type = "toggle", key = "settings.blastaStableAuraIcons", blastaSince = "2.0",
+            label = "Keep minimap aura icons still",
+            desc = "Suppress replayed slide animations when Daylight refreshes the buff and debuff bars." }, true))
+    end
     local groups = { { label = "Player buffs and debuffs", items = rows } }
     for _, scope in ipairs({ "buff", "debuff" }) do
         local widthRow = setting(module, { type = "slider", key = SIZE_KEYS[scope], label = "Icon width",

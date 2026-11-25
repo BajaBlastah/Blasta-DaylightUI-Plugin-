@@ -5,9 +5,10 @@ local ROOT, MOVER = "auraReminder", "daylightextras.auras"
 local MAX_CUSTOM, COLUMNS = 20, 8
 local defaults = {
     enabled = false, presets = true, size = 36, spacing = 6, border = 2,
-    animation = "pulse", underline = true, party = true, selected = "none", entries = {},
+    animation = "pulse", underline = true, party = true, selected = "none", frameShape = "cut", entries = {},
 }
 local MASKS = "Interface\\AddOns\\" .. ADDON .. "\\Media\\XP\\"
+local CUT_MASK = "Interface\\AddOns\\" .. ADDON .. "\\Media\\TooltipIconCut.tga"
 extras.AuraReminderDefaults = defaults
 
 -- The first learned action in each group is used; every listed alternative
@@ -187,21 +188,64 @@ local function card(parent)
     return f
 end
 
+local function hasCut(settings)
+    return settings.frameShape == "cut" or (settings.frameShape == nil and settings.radius == nil)
+end
+
+local function shapeOption()
+    local option = extras.FrameShapeOption(ADDON, ROOT, cfg)
+    local previous = option.get
+    option.blastaSince = "2.0"
+    option.values.cut = "Cut bottom-right corner"
+    option.order[#option.order + 1] = "cut"
+    option.get = function() return hasCut(cfg()) and "cut" or previous() end
+    option.default = function() return defaults.frameShape end
+    return option
+end
+
+extras.German["Cut bottom-right corner"] = "Ecke unten rechts abschrägen"
+
+local function styleCut(f, cut, border)
+    if cut and not f.cutMask then
+        f.cutBack = f:CreateTexture(nil, "BACKGROUND")
+        f.cutBack:SetAllPoints(f)
+        f.cutBack:SetColorTexture(Style.BORDER[1], Style.BORDER[2], Style.BORDER[3], 1)
+        local outer = f:CreateMaskTexture()
+        outer:SetTexture(CUT_MASK, "CLAMP", "CLAMP")
+        outer:SetAllPoints(f)
+        f.cutBack:AddMaskTexture(outer)
+        f.cutMask = f:CreateMaskTexture()
+        f.cutMask:SetTexture(CUT_MASK, "CLAMP", "CLAMP")
+        f.cutMask:SetAllPoints(f.icon)
+    end
+    if f.cutBack then f.cutBack:SetShown(cut and border > 0) end
+    if cut ~= (f.cut == true) then
+        for _, texture in ipairs({ f.icon, f.flash }) do
+            if cut then texture:AddMaskTexture(f.cutMask) else texture:RemoveMaskTexture(f.cutMask) end
+        end
+    end
+    f.cut = cut
+end
+
 local function styleCard(f, settings, size)
     local border, radius = settings.border or defaults.border, extras.FrameCornerOverride(settings)
     if not f.shell then return end
     local inset = DUI.Pixel.Px(f, border)
     local general = radius or DUI.DB.General().cornerPx
-    if f.cardSize == size and f.border == border and f.corner == general and f.inset == inset then return end
+    local cut = hasCut(settings)
+    if f.cardSize == size and f.border == border and f.corner == general and f.inset == inset and f.cut == cut then return end
     f.cardSize, f.border, f.corner, f.inset = size, border, general, inset
     local opts = f.shell.opts
     opts.borderPx, opts.cornerPx, opts.noBorder = border, radius, border == 0
     Style.LayoutShell(f.shell)
+    f.shell:SetShown(not cut)
     f.icon:ClearAllPoints()
     f.icon:SetPoint("TOPLEFT", f, "TOPLEFT", inset, -inset)
     f.icon:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -inset, inset)
     local inner = math.max(1, size - 2 * inset)
-    local r = math.max(0, (f.shell.radius or 0) - inset)
+    f.count:SetPoint("BOTTOMRIGHT", f.icon, "BOTTOMRIGHT", cut and -math.max(1, inner * 14 / 64 - 3) or -1, 1)
+    styleCut(f, cut, border)
+    local r = cut and 0 or math.max(0, (f.shell.radius or 0) - inset)
     local step = math.min(8, math.floor(r * 16 / inner + 0.5))
     if step == 0 and not f.masked then return end
     f.masks = f.masks or { f:CreateMaskTexture(), f:CreateMaskTexture() }
@@ -325,6 +369,30 @@ local function testReminder()
     end)
 end
 
+-- Secure name casts use the highest learned rank. Party entries cast an exact ID.
+local function tooltipSpell(entry)
+    local data = DUI.Book and DUI.Book.SpellData
+    if not (data and data.Read and data.RankOf) then return end
+    local best
+    for _, section in ipairs(data.Read(entry.party == true).sections) do
+        if not section.pet then
+            for _, spell in ipairs(section.spells) do
+                if not spell.future and spell.name == entry.name then
+                    if entry.party then
+                        if spell.spellID == entry.id then return spell end
+                        for _, lower in ipairs(spell.lows) do
+                            if not lower.future and lower.spellID == entry.id then return lower end
+                        end
+                    elseif not best or data.RankOf(spell) > data.RankOf(best) then
+                        best = spell
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
 local function button(i)
     if clicks[i] then return clicks[i] end
     local b = CreateFrame("Button", nil, secure, "SecureActionButtonTemplate")
@@ -332,12 +400,31 @@ local function button(i)
     b:SetScript("OnEnter", function(self)
         local e = self.reminder
         if not e then return end
+        local f = visuals[i]
+        if f and extras.IconOutline then
+            f.hoverOutline = f.hoverOutline or extras.IconOutline(f)
+            f.hoverOutline(f.cut and f:GetWidth() * 14 / 64 or nil, true)
+        end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        if e.kind == "item" then GameTooltip:SetItemByID(e.id) else GameTooltip:SetSpellByID(e.id) end
+        if e.kind == "item" then
+            GameTooltip:SetItemByID(e.id)
+        else
+            local spell = tooltipSpell(e)
+            if spell and GameTooltip.SetSpellBookItem then
+                GameTooltip:SetSpellBookItem(spell.slot, spell.bank)
+            else
+                GameTooltip:SetSpellByID(spell and spell.spellID or e.id)
+            end
+        end
         GameTooltip:AddLine(L("Click to refresh this buff."), 0.9, 0.75, 0.45)
         GameTooltip:Show()
     end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    local function clearHover()
+        local f = visuals[i]
+        if f and f.hoverOutline then f.hoverOutline(nil, false) end
+    end
+    b:SetScript("OnLeave", function() clearHover(); GameTooltip:Hide() end)
+    b:SetScript("OnHide", clearHover)
     b:Hide()
     clicks[i] = b
     return b
@@ -818,7 +905,7 @@ function extras.AuraReminderPage()
             { type = "slider", key = ROOT .. ".size", label = "Icon size", min = 22, max = 64, step = 1, unit = "px" },
             { type = "slider", key = ROOT .. ".spacing", label = "Aura reminder spacing", min = 0, max = 32, step = 1, unit = "px" },
             { type = "slider", key = ROOT .. ".border", label = "Aura reminder border thickness", min = 0, max = 6, step = 1, unit = "px" },
-            extras.FrameShapeOption(ADDON, ROOT, cfg),
+            shapeOption(),
             { type = "dropdown", key = ROOT .. ".animation", label = "Reminder animation",
                 values = { pulse = "Dawn sweep", pop = "Soft bloom", off = "Off" }, order = { "pulse", "pop", "off" } },
             { type = "toggle", key = ROOT .. ".underline", label = "Accent underline" },

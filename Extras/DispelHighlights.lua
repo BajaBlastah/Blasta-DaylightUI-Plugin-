@@ -45,7 +45,7 @@ setting.desc = "Show a pulsing border and glow in the dispel type color."
 local items = { setting }
 -- The dispel hint: only what your class removes (the client picks those),
 -- and only while you can cast it (not in a form that can't, not out of mana).
-local VERSION = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version") or nil
+local VERSION = "1.9.8"
 local onlyMineSetting = toggle(onlyMineKey, "Only what you can remove", true)
 onlyMineSetting.desc = "Lights up only effects your class can remove, in their dispel type color."
 onlyMineSetting.disabled = function() return not setting.get() end
@@ -211,6 +211,64 @@ end
 
 local watched = setmetatable({}, { __mode = "k" })
 local halos = setmetatable({}, { __mode = "k" })
+local targetRingAlpha = setmetatable({}, { __mode = "k" })
+local targetWhite = { 0.92, 0.94, 0.96 }
+
+local function updateTargetRing(frame, dispelAlpha)
+    local mark = frame.targetMark
+    local ring = mark and mark.ring
+    if not (ring and ring.SetAlpha and frame.markOn) then return end
+    local alpha, hiddenByClient = 1, nil
+    if dispelAlpha and dispelAlpha > 0 then
+        for _, button in ipairs(frame.glowBtns or {}) do
+            if button.withoutType == onlyMine then
+                local ok, shown = pcall(button.IsVisible, button)
+                if ok then
+                    if not readable(shown) then
+                        hiddenByClient = shown
+                    elseif shown then
+                        alpha = 0
+                        break
+                    end
+                end
+            end
+        end
+    end
+    if alpha ~= 0 and not readable(hiddenByClient) and ring.SetAlphaFromBoolean then
+        if pcall(ring.SetAlphaFromBoolean, ring, hiddenByClient, 0, 1) then
+            targetRingAlpha[ring] = nil
+            return
+        end
+    end
+    if targetRingAlpha[ring] ~= alpha and pcall(ring.SetAlpha, ring, alpha) then
+        targetRingAlpha[ring] = alpha
+    end
+end
+
+if type(parts.LayoutTargetMark) == "function" and type(parts.MARK_PX) == "number" then
+    local layoutTargetMark = parts.LayoutTargetMark
+    function parts.LayoutTargetMark(frame, cfg)
+        local mark = frame.targetMark
+        if not (mark and mark.ring and mark.ring.opts and type(cfg) == "table") then
+            return layoutTargetMark(frame, cfg)
+        end
+        -- Keep Daylight's slant geometry, portrait layering, target fade and
+        -- secure visibility. Only change the thickness and resting color.
+        mark.ring.opts.borderPx = 1
+        local settings = setmetatable({
+            targetMarkColor = "custom",
+            targetMarkCustom = targetWhite,
+        }, { __index = cfg })
+        local oldThickness = parts.MARK_PX
+        parts.MARK_PX = 1
+        local ok, err = pcall(layoutTargetMark, frame, settings)
+        parts.MARK_PX = oldThickness
+        if not ok then error(err, 0) end
+        local entry = frame.glowBox and watched[frame.glowBox]
+        updateTargetRing(frame, entry and entry.alpha)
+    end
+end
+
 local canPurge
 local function haloAlpha(relation, kind)
     return relation == kind and (kind == "friendly" or not onlyMine or canPurge) and 1 or 0
@@ -436,11 +494,13 @@ DUI.On("Login", function()
 
     local driver = CreateFrame("Frame")
     local elapsed = 0
+    -- The pulse needs smooth steps; without motion the highlight only changes
+    -- with the target or a spell becoming usable, so a few checks a second do.
     driver:SetScript("OnUpdate", function(_, delta)
         elapsed = elapsed + delta
-        if elapsed < 0.025 then return end
-        elapsed = 0
         local motion = DUI.Motion and DUI.Motion.On()
+        if elapsed < (motion and 0.025 or 0.2) then return end
+        elapsed = 0
         local phase
         local targetFrame = ns.frames and ns.frames.target
         local friendlyTarget
@@ -463,8 +523,10 @@ DUI.On("Login", function()
                 if entry.alpha ~= opacity and pcall(container.SetAlpha, container, opacity) then
                     entry.alpha = opacity
                 end
+                if frame.markWas ~= false then updateTargetRing(frame, entry.alpha) end
             else
                 entry.alpha = nil
+                updateTargetRing(entry.frame)
             end
         end
     end)

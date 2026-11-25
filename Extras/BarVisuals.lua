@@ -134,8 +134,40 @@ local function readableNumber(value)
     return type(value) == "number" and not (issecretvalue and issecretvalue(value))
 end
 
+local function raiseCastPreview(bar)
+    if not (bar and bar.preview and bar.kind == "target" and bar.bar and bar.text) then return end
+    local fill, overlay = bar.bar, bar.text:GetParent()
+    if not overlay then return end
+
+    -- The designer shows the finished cast. A higher frame level cannot
+    -- draw through the slide animation's clipping rectangle.
+    local owner = bar.column and bar.column.f or bar.attached
+    if bar.column and bar.clip then bar.clip:SetClipsChildren(false) end
+    local level = bar:GetFrameLevel()
+    local ownerLayer = owner and (owner.overlay or owner)
+    local ownerLevel = ownerLayer and ownerLayer:GetFrameLevel() or level
+    local fillLevel, textLevel = fill:GetFrameLevel(), overlay:GetFrameLevel()
+    if not (readableNumber(level) and readableNumber(ownerLevel)
+        and readableNumber(fillLevel) and readableNumber(textLevel)) then return end
+    local front = math.max(level + 1, ownerLevel + 1, fillLevel)
+    if front ~= fillLevel then fill:SetFrameLevel(front) end
+    local fx = waves[bar]
+    if fx then fx.layer:SetFrameLevel(front + 1) end
+    if textLevel < front + 3 then overlay:SetFrameLevel(front + 3) end
+end
+
+if cast and type(cast.Layout) == "function" then
+    hooksecurefunc(cast, "Layout", raiseCastPreview)
+end
+if cast and type(cast.ShowSample) == "function" then
+    hooksecurefunc(cast, "ShowSample", raiseCastPreview)
+end
 if cast and type(cast.Hang) == "function" then
     hooksecurefunc(cast, "Hang", function(bar)
+        if bar and bar.kind == "target" and bar.preview then
+            raiseCastPreview(bar)
+            return
+        end
         local column = bar and bar.kind == "target" and bar.column
         if not (column and column.f and bar.bar and bar.text and bar.text.GetParent
             and bar.slide and readableNumber(bar.slide.p)) then return end

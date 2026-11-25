@@ -2,18 +2,19 @@
 ## Title: |cff4c92ffB|r|cff34bcedl|r|cff1be7daa|r|cff36fdb8s|r|cff85fe85t|r|cffd3ff52a|r (DaylightUI Plugin)
 ## Notes: Additional settings and interface refinements for DaylightUI.
 ## Notes-deDE: Zusätzliche Einstellungen und UI-Anpassungen für DaylightUI.
-## Version: 1.9.0
+## Version: 2.1
 ## X-License: GPL-3.0-or-later
 ## SavedVariables: DaylightBlastaLanguage, DaylightBlastaLoginMessage, DaylightBlastaIntroAtLogin, DaylightBlastaIntroAtReload
 ## IconTexture: Interface\AddOns\DaylightUI_Blasta\Media\DaylightExtras.tga
 ## Dependencies: DaylightUI
-## OptionalDeps: DaylightUI_Skins, DaylightUI_QoL, DaylightUI_Nameplates, DaylightUI_UnitFrames, DaylightUI_InfoPanel, DaylightUI_Quests, DaylightUI_Tooltip, DaylightUI_Buffs, DaylightUI_Bags, DaylightUI_ActionBars, Auctionator, DisenchantBuddy
+## OptionalDeps: DaylightUI_Skins, DaylightUI_QoL, DaylightUI_Nameplates, DaylightUI_UnitFrames, DaylightUI_InfoPanel, DaylightUI_Quests, DaylightUI_Tooltip, DaylightUI_Buffs, DaylightUI_Bags, DaylightUI_ActionBars, DaylightUI_Chat, Auctionator, DisenchantBuddy
 
 Extras\Core.lua
 Extras\Edges.lua
 Extras\AuraSizes.lua
 Extras\Settings.lua
 Extras\Locale-deDE.lua
+Extras\AuctionLocale-deDE.lua
 Extras\Profiles.lua
 Extras\UnitFrameSlants.lua
 Extras\PortraitShapes.lua
@@ -39,14 +40,37 @@ Extras\TopRightLayout.lua
 Extras\DispelHighlights.lua
 Extras\ExperienceBar.lua
 Extras\ExperienceGain.lua
-Extras\Tooltip.lua
 Extras\Coins.lua
 Extras\BlastaTooltips.lua
 Extras\QuestTracker.lua
+Extras\ZoneQuestTracking.lua
 Extras\Spellbook.lua
 Extras\TrainingTotal.lua
+Data\Training\Core.lua
+Data\Training\Druid.lua
+Data\Training\Hunter.lua
+Data\Training\HunterPets.lua
+Data\Training\Mage.lua
+Data\Training\Paladin.lua
+Data\Training\Priest.lua
+Data\Training\Rogue.lua
+Data\Training\Shaman.lua
+Data\Training\Warlock.lua
+Data\Training\WarlockTomes.lua
+Data\Training\Warrior.lua
+Data\Training\QuestSpells.lua
+Data\Training\WeaponSkillsBase.lua
+Data\Training\WeaponSkills.lua
+Data\Training\TrainerFactions.lua
+Extras\BookTraining.lua
+Extras\TrainingPrices.lua
 Extras\MirrorTimers.lua
-Extras\FlightTimer.lua
+Extras\CcRing.lua
+Extras\LootRollIcon.lua
+Extras\FlightBanner.lua
+Extras\ChatWhisper.lua
+Extras\ChatMicroMenu.lua
+Extras\TalentRows.lua
 Extras\FriendDetails.lua
 Extras\DungeonFilters.lua
 Extras\LootFeed.lua
@@ -82,6 +106,7 @@ NameplateBorders.lua
 Extras\NameplateShape.lua
 Extras\NameplateAuraMotion.lua
 Extras\NameplateAuraSizes.lua
+Extras\NameplateThreat.lua
 Extras\DesignParts.lua
 Extras\InterruptHint.lua
 NameplateNames.lua
@@ -94,5 +119,10 @@ Extras\Report.lua
 ChannelTicks.lua
 Extras\Compat.lua
 Extras\SidePanel.lua
+Extras\OptionTabs.lua
+Extras\AuraIconCorners.lua
+Extras\PanelCorners.lua
+Extras\IconFeedback.lua
+Extras\LootSpace.lua
 Imported\Core.lua
 Imported\Options.lua

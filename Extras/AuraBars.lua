@@ -452,7 +452,7 @@ local function layout(parts, index, width, height)
         if parts.kind == "buff" then setColor(parts, parts.category) end
         local font, size, flags = GameFontHighlightSmall:GetFont()
         if font and size then
-            local fontFlags = extras.Outline(elegant and "OUTLINE" or (flags or ""))
+            local fontFlags = elegant and "OUTLINE" or (flags or "")
             parts.name:SetFont(font, size, fontFlags)
             parts.time:SetFont(font, elegant and size + 1 or size, fontFlags)
         end

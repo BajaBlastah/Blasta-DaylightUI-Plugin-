@@ -14,7 +14,7 @@ if not (Cast and Cast.Update and Cast.Stop and Cast.Interrupted and Cast.ShowSam
     and Interrupt and Interrupt.Ready and Interrupt.Spell and mod.defaults
     and extras.FindSetting(mod, "castKickMark")) then return end
 
-local VERSION = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version") or nil
+local VERSION = "1.9.8"
 local german = extras.German
 local isSecret = DUI.IsSecret or function() return false end
 

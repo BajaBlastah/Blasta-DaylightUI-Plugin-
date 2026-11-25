@@ -8,7 +8,7 @@ local mod = DUI:GetModule("InfoPanel")
 local ROOT, TEST = "experienceStyle", "blastaExperience"
 local MASKS = "Interface\\AddOns\\" .. ADDON .. "\\Media\\XP\\"
 local defaults = {
-    border = -1, format = "native", rested = true, align = "CENTER",
+    format = "native", rested = true, align = "CENTER",
     left = "straight", right = "straight",
     x = 0, y = 0, ownColor = false, color = { 1, 1, 1 },
     textZones = false, gainMotion = true, killEstimate = true,
@@ -110,7 +110,8 @@ local function layoutMasks()
     local radius = math.max(0, math.min((shell.radius or 0) - inset, h / 2, w / 2))
     -- Each end mask is clamped to solid white toward the middle.
     -- Eight vertical ratios keep the radius circular as the bar height changes.
-    local step = not XP.vertical and (side or extras.FrameCornerOverride(s) ~= nil or (s.border or -1) >= 0)
+    local look = mod.db and mod.db.xp and mod.db.xp.shell
+    local step = not XP.vertical and (side or (type(look) == "table" and look.own == true))
         and math.min(8, math.floor(radius * 16 / h + 0.5)) or 0
     local previous = maskKey
     maskKey = (side or step > 0) and true or nil
@@ -340,27 +341,33 @@ end
 
 local nativeLayout = Panel.Layout
 function Panel.Layout(db)
+    -- Border, corners and shadow are DaylightUI's own since 1.9.6
+    -- (Experience bar > Own border and shadow); Blasta only shapes the ends.
     if XP.frame and not shell then
         shell = Style.GetShell(XP.frame)
-        original = { border = shell.opts.borderPx, radius = shell.opts.cornerPx, text = { XP.text:GetTextColor() } }
-    end
-    if shell then
-        local s = cfg()
-        local border = s.border or -1
-        shell.opts.borderPx = border >= 0 and border or original.border
-        shell.opts.cornerPx = extras.FrameCornerOverride(s) or original.radius
+        original = { text = { XP.text:GetTextColor() } }
     end
     return nativeLayout(db)
 end
 
-hooksecurefunc(Panel, "ApplyAlpha", function()
-    if not shell then return end
-    local border = cfg().border or -1
-    if border < 0 then return end
-    shell.opts.noBorder = border == 0
-    shell.opts.noBevel = border == 0
-    shell.opts.shadowAlpha = border == 0 and 0 or nil
-end)
+-- Blasta's old border thickness and frame shape move to DaylightUI's own
+-- look once, so the bar keeps the border it had.
+local function moveOldLook()
+    local s = DUI:Get(ADDON, ROOT)
+    if type(s) ~= "table" or not (mod.db and mod.db.xp) then return end
+    local border = tonumber(s.border) or -1
+    local shape = s.frameShape
+    if border < 0 and shape ~= "square" and shape ~= "rounded" then return end
+    local look = mod.db.xp.shell
+    if type(look) ~= "table" or look.own ~= true then
+        DUI:Set("InfoPanel", "xp.shell.own", true)
+        if border >= 0 then DUI:Set("InfoPanel", "xp.shell.borderPx", border) end
+        if shape == "square" then DUI:Set("InfoPanel", "xp.shell.cornerPx", 0) end
+        if border == 0 then DUI:Set("InfoPanel", "xp.shell.shadowPx", 0) end
+    end
+    DUI:Set(ADDON, ROOT .. ".border", -1)
+    DUI:Set(ADDON, ROOT .. ".frameShape", nil)
+end
 
 hooksecurefunc(XP, "Apply", function()
     if not shell then return end
@@ -426,17 +433,21 @@ end)
 DUI.On("TestModeChanged", refreshTest)
 DUI.On("TestPartChanged", function(key) if key == TEST then refreshTest() end end)
 DUI.On("Login", function()
+    pcall(moveOldLook)
     updateTicker()
     DUI.AfterCombat(refreshGeometry, "blastaExperienceGeometry")
+end)
+-- DaylightUI's own border and corners changed: the ends are cut again.
+DUI.On("SettingChanged", function(scope, path)
+    if scope == "InfoPanel" and type(path) == "string" and path:match("^xp%.shell") and shell then
+        DUI.AfterCombat(refreshGeometry, "blastaExperienceGeometry")
+    end
 end)
 DUI.On("SettingChanged", function(scope, path)
     if scope ~= ADDON or type(path) ~= "string" or not path:match("^experienceStyle%.") then return end
     if path == ROOT .. ".textZones" then updateTicker() end
     if not shell then return end
-    if path == ROOT .. ".border" then
-        DUI.AfterCombat(refreshGeometry, "blastaExperienceGeometry")
-    elseif path == ROOT .. ".frameShape" or path == ROOT .. ".left" or path == ROOT .. ".right" then
-        shell.opts.cornerPx = extras.FrameCornerOverride(cfg()) or original.radius
+    if path == ROOT .. ".left" or path == ROOT .. ".right" then
         Style.LayoutShell(shell)
         layoutMasks()
     else
@@ -450,9 +461,6 @@ function extras.ExperiencePage()
     local order = { "straight", "top", "bottom" }
     local page = { id = "experienceStyle", label = "Experience bar", preview = { TEST }, groups = {
         { label = "Appearance", items = {
-            { type = "slider", key = ROOT .. ".border", label = "Experience border thickness", min = -1, max = 12, step = 1, unit = "px",
-                desc = "Minus one follows Daylight. Zero hides the border." },
-            extras.FrameShapeOption(ADDON, ROOT, cfg),
             { type = "dropdown", key = ROOT .. ".left", label = "Left edge direction", values = directions, order = order },
             { type = "dropdown", key = ROOT .. ".right", label = "Right edge direction", values = directions, order = order },
             { type = "slider", key = ROOT .. ".height", label = "Experience bar height",

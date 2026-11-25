@@ -12,7 +12,7 @@ local Style = DUI.Style
 if not (Page and Page.RefreshStats and Page.StatTip and Stats and Stats.Read and Stats.Paint and Stats.GROUPS
     and Style and Style.Text) then return end
 
-local VERSION = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version") or nil
+local VERSION = "1.9.8"
 local KEY = "characterPanel.statsBars"
 local german = extras.German
 german["Health and power bars"] = "Gesundheits- und Ressourcenleiste"

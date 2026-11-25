@@ -46,7 +46,7 @@ local HELP = {
         ["Experience bar"] = "Blasta's look for the experience bar and the animation when you gain experience.",
         General = "Spacing and layout of the info panel and the buffs beside it.",
         ["Data texts"] = "Colors of the data texts and whether money shows to the copper.",
-        Buffs = "How your buffs and debuffs line up at the top right.",
+        Buffs = "Spacing, borders, and animation for the buffs and debuffs next to the minimap.",
         ["Buff reminders"] = "A reminder when a buff you want is missing, with a key to cast it.",
     },
     tooltips = {
@@ -63,7 +63,8 @@ local HELP = {
     world = {
         ["World map"] = "Boat and zeppelin routes when you hover one of their symbols on the map. Zone levels are DaylightUI's own now (Game window skins → World map).",
         ["Zone title"] = "More on DaylightUI's zone title when you enter a zone: its level range, whether you discovered it and whether it's a rest area.",
-        ["Loot feed"] = "Blasta's loot feed: what you loot, with its value, in place of DaylightUI's.",
+        Loot = "Loot window icons, making room in full bags, loot rolls, and loot feed messages.",
+        Chat = "Chat corners, the micro menu, and whisper windows.",
         ["Flight & breath bars"] = "The look of the bar while you fly with a flight master, and of the breath and fatigue bars.",
         ["AFK screen"] = "Blasta's layout for DaylightUI's AFK screen, with what you did this session.",
     },
@@ -74,6 +75,12 @@ local HELP = {
 }
 
 local DE = {
+    ["Spacing, borders, and animation for the buffs and debuffs next to the minimap."] =
+        "Abstände, Rahmen und Animationen der Buffs und Debuffs neben der Minikarte.",
+    ["Loot window icons, making room in full bags, loot rolls, and loot feed messages."] =
+        "Beute-Icons, Platz in vollen Taschen, Würfelfenster und Meldungen im Beute-Feed.",
+    ["Chat corners, the micro menu, and whisper windows."] =
+        "Chat-Ecken, Mikromenü und Flüsterfenster.",
     ["Blasta's extras for DaylightUI's unit frames. The preview above shows the frame of the tab you're on; in Design mode you can drag Blasta's parts on it, like the leader crown or the PvP badge."] =
         "Blastas Extras für DaylightUIs Einheitenfenster. Die Vorschau oben zeigt das Fenster des gewählten Reiters; im Design-Modus kannst du Blastas Teile darauf verschieben, etwa die Anführerkrone oder das PvP-Abzeichen.",
     ["Your own frame: slants, portrait shape, text sizes and the icons on the portrait. In Design mode, drag the icons on the preview."] =
@@ -108,7 +115,6 @@ local DE = {
         "Blastas Aussehen für die Erfahrungsleiste und die Animation, wenn du Erfahrung bekommst.",
     ["Spacing and layout of the info panel and the buffs beside it."] = "Abstände und Anordnung des Info-Panels und der Buffs daneben.",
     ["Colors of the data texts and whether money shows to the copper."] = "Farben der Datentexte und ob Geld auf das Kupfer genau angezeigt wird.",
-    ["How your buffs and debuffs line up at the top right."] = "Wie sich deine Buffs und Debuffs oben rechts anordnen.",
     ["A reminder when a buff you want is missing, with a key to cast it."] = "Eine Erinnerung, wenn ein gewünschter Buff fehlt, mit einer Taste zum Wirken.",
     ["Blasta's own tooltip look, its text sizes, DaylightUI's coins in every price and sell prices per piece. Click a part of the preview on the right to jump to its setting. Click \"Item\" again for a recipe or a quest item."] =
         "Blastas eigenes Tooltip-Aussehen, seine Textgrößen, DaylightUIs Münzen bei jedem Preis und Verkaufspreise pro Stück. Klick auf einen Teil der Vorschau rechts springt zu seiner Einstellung. Klicke erneut auf „Gegenstand“ für ein Rezept oder einen Questgegenstand.",
@@ -124,7 +130,6 @@ local DE = {
         "Schiffs- und Zeppelinrouten, wenn du auf der Karte über eines ihrer Symbole fährst. Zonenstufen hat DaylightUI jetzt selbst (Spielfenster-Skins → Weltkarte).",
     ["More on DaylightUI's zone title when you enter a zone: its level range, whether you discovered it and whether it's a rest area."] =
         "Mehr auf DaylightUIs Zonentitel beim Betreten einer Zone: ihr Stufenbereich, ob du sie entdeckt hast und ob sie ein Rastgebiet ist.",
-    ["Blasta's loot feed: what you loot, with its value, in place of DaylightUI's."] = "Blastas Beute-Feed: was du erbeutest, mit seinem Wert, anstelle von DaylightUIs.",
     ["The look of the bar while you fly with a flight master, and of the breath and fatigue bars."] =
         "Das Aussehen der Leiste beim Flug mit einem Flugmeister und der Atem- und Erschöpfungsleiste.",
     ["Blasta's layout for DaylightUI's AFK screen, with what you did this session."] =

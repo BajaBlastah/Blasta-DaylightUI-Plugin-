@@ -13,9 +13,17 @@ if not (mod and mod.defaults and Auras and Auras.Layout and Auras.ShowSample and
 local NATIVE_ASPECT, NATIVE_BORDER = Auras.ASPECT, Auras.BORDER_PX
 local SQUARE = { buff = "blastaSquareBuffs", debuff = "blastaSquareDebuffs" }
 local THIN = "blastaThinAuraBorders"
+-- Fit to the nameplate: so many debuffs per row, so many rows, shrunk to the
+-- health bar's width when a full row would stick out, centered on the bar.
+local FIT, PER_ROW, ROW_COUNT = "blastaDebuffFit", "blastaDebuffPerRow", "blastaDebuffRows"
 mod.defaults[SQUARE.buff] = false
 mod.defaults[SQUARE.debuff] = false
 mod.defaults[THIN] = false
+mod.defaults[FIT] = false
+mod.defaults[PER_ROW] = 6
+local ROW_GAP = "blastaDebuffRowGap"
+mod.defaults[ROW_COUNT] = 1
+mod.defaults[ROW_GAP] = 0
 
 local ROWS = {
     debuffs = { key = "debuffSize", kind = "debuff", label = "Nameplate debuffs" },
@@ -58,6 +66,77 @@ end
 
 local function nativeHeight(width) return math.floor(width * NATIVE_ASPECT + .5) end
 
+-- Debuff fit: per row and rows from the settings; the width shrinks only when
+-- a full row of the set size would be wider than the bar.
+local function fitOn()
+    local db = cfg()
+    return db and db[FIT] == true and db.debuffs ~= false
+end
+local function perRow()
+    local db = cfg()
+    return math.max(1, math.floor(tonumber(db and db[PER_ROW]) or 6))
+end
+local function rowCount()
+    local db = cfg()
+    return math.max(1, math.floor(tonumber(db and db[ROW_COUNT]) or 1))
+end
+local function barWidth(p)
+    local w = p and p.hp and p.hp.GetWidth and p.hp:GetWidth()
+    if type(w) == "number" and w > 0 and not (issecretvalue and issecretvalue(w)) then return w end
+    local db = cfg()
+    return tonumber(db and db.width) or 170
+end
+local GAP = function() return Auras.GAP or 2 end
+
+-- Width and height of a fitted debuff on plate p (nil: fit off).
+local function fitSize(p)
+    if not fitOn() then return nil end
+    local row = ROWS.debuffs
+    local base = widthOf(row)
+    if base <= 0 then return nil end
+    local n, gap = perRow(), GAP()
+    local width = base
+    local room = barWidth(p)
+    if n * base + (n - 1) * gap > room then width = math.max(8, math.floor((room - (n - 1) * gap) / n)) end
+    local height = math.max(1, math.floor(heightOf(row, base) * width / base + .5))
+    return width, height
+end
+local function rowGap()
+    local db = cfg()
+    return tonumber(db and db[ROW_GAP]) or 0
+end
+
+local function lineSpacing(width, fitted)
+    local timeRoom = fitted and math.ceil(width * .35) or math.ceil(math.max(8, math.floor(width * .3 + 4.5)) / 2)
+    -- Use a positive gap for the client flow and the preview alike.
+    return math.max(1, GAP() + timeRoom + rowGap())
+end
+
+-- Whether Blasta changes nameplate auras at all. With every Blasta option at
+-- DaylightUI's look, aura changes (UNIT_AURA on every plate in range, many
+-- times a second in a fight) skip all of the work below. Read again after
+-- every layout, which a settings change always brings.
+local activeCache
+local function blastaActive()
+    if activeCache ~= nil then return activeCache end
+    local db, on = cfg(), false
+    -- Before the settings exist there's nothing to decide yet: don't keep
+    -- that answer, or the sizes stay off until the next layout.
+    if not db then return false end
+    do
+        if db[THIN] == true or db[SQUARE.buff] == true or db[SQUARE.debuff] == true or fitOn() then
+            on = true
+        else
+            for _, row in pairs(ROWS) do
+                local w = widthOf(row)
+                if w > 0 and heightOf(row, w) ~= nativeHeight(w) then on = true; break end
+            end
+        end
+    end
+    activeCache = on
+    return on
+end
+
 local function useBorder()
     local db = cfg()
     Auras.BORDER_PX = db and db[THIN] == true and 1 or NATIVE_BORDER
@@ -65,11 +144,25 @@ end
 
 -- Options: the global switches with the native aura rows, and a height and
 -- an aspect lock under each size slider.
+extras.German["Debuff row spacing"] = "Abstand zwischen Debuffreihen"
+extras.German["Adjust the vertical gap between rows. 0 keeps the automatic spacing."] =
+    "Ändert den senkrechten Abstand zwischen den Reihen. 0 behält den automatischen Abstand bei."
+
 local function addRows()
     for _, page in ipairs(mod.options and mod.options.pages or {}) do
         for _, group in ipairs(page.groups or {}) do
             for i = #group.items, 1, -1 do
                 local item = group.items[i]
+                if item.key == "maxDebuffs" and not item.blastaFitGuard then
+                    -- Fit sets the count itself (per row x rows).
+                    local was = item.disabled
+                    item.blastaFitGuard = true
+                    item.disabled = function(get, ...)
+                        if get(FIT) == true then return true end
+                        if type(was) == "function" then return was(get, ...) end
+                        return was
+                    end
+                end
                 for _, row in pairs(ROWS) do
                     if item.key == row.key and item.type == "slider" then
                         local heightRow, keepRow = Sizes.Rows(item, {
@@ -100,6 +193,17 @@ local function addRows()
                 desc = "Nameplate debuff and crowd control icons as tall as they are wide, unless their own size says otherwise." }
             items[#items + 1] = { type = "toggle", key = THIN, label = "1 px aura borders", blastaDestination = route("Nameplate auras"), blastaSince = "1.5",
                 desc = "Draws the border around nameplate buffs and debuffs one pixel thick." }
+            items[#items + 1] = { type = "toggle", key = FIT, label = "Fit debuffs to the nameplate", blastaDestination = route("Nameplate auras"),
+                desc = "Your debuffs in rows centered on the health bar: as many per row and as many rows as set below. When a full row at your debuff size would be wider than the bar, the icons shrink until it fits edge to edge. Replaces Max debuffs shown." }
+            items[#items + 1] = { type = "slider", key = PER_ROW, label = "Debuffs per row", min = 1, max = 12, step = 1,
+                blastaDestination = route("Nameplate auras"), disabled = function(get) return get(FIT) ~= true end,
+                desc = "How many debuffs sit side by side in a row." }
+            items[#items + 1] = { type = "slider", key = ROW_COUNT, label = "Debuff rows", min = 1, max = 3, step = 1,
+                blastaDestination = route("Nameplate auras"), disabled = function(get) return get(FIT) ~= true end,
+                desc = "How many rows of debuffs at most. Rows stack upward from the bar." }
+            items[#items + 1] = { type = "slider", key = ROW_GAP, label = "Debuff row spacing", min = -10, max = 24,
+                step = 1, unit = "px", blastaSince = "1.9.4", blastaDestination = route("Nameplate auras"),
+                desc = "Adjust the vertical gap between rows. 0 keeps the automatic spacing." }
         end
     end
 end
@@ -134,6 +238,42 @@ local function fitButton(button, width, height, plate, relayout)
     return pcall(icon.SetTexCoord, icon, Sizes.IconCoords(width, height, DUI.Pixel.Px(plate, Auras.BORDER_PX)))
 end
 
+-- Whether a button's size differs from w x h. nil when it can't be read
+-- (closed to addons, or secret): then only new buttons are fitted.
+local function offSize(button, w, h)
+    local ok, bw, bh = pcall(function() return button:GetWidth(), button:GetHeight() end)
+    if not ok or type(bw) ~= "number" or type(bh) ~= "number" then return nil end
+    if issecretvalue and (issecretvalue(bw) or issecretvalue(bh)) then return nil end
+    return math.abs(bw - w) > 0.5 or math.abs(bh - h) > 0.5
+end
+
+-- Apply container geometry with the native layout pass. The individual
+-- buttons can stay deferred during combat without losing the row spacing.
+local function layoutGroups(p)
+    for what, c in pairs(p.auras or {}) do
+        local row = ROWS[what]
+        local width = row and widthOf(row) or 0
+        if width > 0 then
+            local fw, fh
+            if what == "debuffs" then fw, fh = fitSize(p) end
+            local height = fh or heightOf(row, width)
+            local kind = Auras.KINDS[what]
+            if kind and c.SetAuraGroupLayout
+                and (fw or height ~= nativeHeight(width) or (what == "debuffs" and rowGap() ~= 0)) then
+                local spacing = what == "debuffs" and lineSpacing(fw or width, fw ~= nil)
+                    or GAP() + math.ceil(width * .35)
+                pcall(c.SetAuraGroupLayout, c, kind.key, {
+                    layoutIndex = 1, elementWidth = fw or width, elementHeight = height,
+                    elementSpacing = GAP(), lineSpacing = spacing,
+                })
+            end
+            if fw and c.SetAuraGroupMaxFrameCount then
+                pcall(c.SetAuraGroupMaxFrameCount, c, kind.key, perRow() * rowCount())
+            end
+        end
+    end
+end
+
 local fitted = setmetatable({}, { __mode = "k" })
 local function adjust(p, relayout)
     for what, c in pairs(p.auras or {}) do
@@ -141,22 +281,29 @@ local function adjust(p, relayout)
         local count = buttons and #buttons or 0
         local first = relayout and 1 or (fitted[c] or 0) + 1
         local row = ROWS[what]
-        local width = row and (relayout or first <= count) and widthOf(row) or 0
-        if width > 0 then
-            local height = heightOf(row, width)
-            if relayout and height ~= nativeHeight(width) then
-                local key = Auras.KINDS[what] and Auras.KINDS[what].key
-                if key and c.SetAuraGroupLayout then
-                    pcall(c.SetAuraGroupLayout, c, key, {
-                        layoutIndex = 1, elementWidth = width, elementHeight = height,
-                        elementSpacing = Auras.GAP or 2, lineSpacing = (Auras.GAP or 2) + math.ceil(width * .35),
-                    })
+        -- Every button, not just new ones: DaylightUI fits a button to its
+        -- own size when it's made or refitted, which would undo Blasta's.
+        local width = row and widthOf(row) or 0
+        local fw, fh
+        if what == "debuffs" and width > 0 then fw, fh = fitSize(p) end
+        if fw then
+            for i = 1, count do
+                local b = buttons[i]
+                if relayout or i >= first or offSize(b, fw, fh) ~= false then
+                    if not fitButton(b, fw, fh, p, true) then break end
                 end
+                fitted[c] = math.max(fitted[c] or 0, i)
             end
-            fitted[c] = first - 1
-            for i = first, count do
-                if not fitButton(buttons[i], width, height, p, relayout) then break end
-                fitted[c] = i
+        elseif width > 0 then
+            local height = heightOf(row, width)
+            local custom = height ~= nativeHeight(width)
+            for i = 1, count do
+                local b = buttons[i]
+                local fresh = relayout or i >= first
+                if fresh or (custom and offSize(b, width, height) ~= false) then
+                    if not fitButton(b, width, height, p, fresh or custom) then break end
+                end
+                fitted[c] = math.max(fitted[c] or 0, i)
             end
         end
     end
@@ -166,7 +313,10 @@ local held = setmetatable({}, { __mode = "k" })
 local function flushHeld()
     for plate, relayout in pairs(held) do
         held[plate] = nil
-        if plate.blastaAuraUnit then adjust(plate, relayout) end
+        if plate.blastaAuraUnit then
+            if relayout then layoutGroups(plate) end
+            adjust(plate, relayout)
+        end
     end
 end
 local function adjustLater(p, relayout)
@@ -183,6 +333,7 @@ end
 local byUnit, pending = {}, {}
 local needsUpdate
 local function queueFit(p)
+    if not blastaActive() then return end
     pending[p] = true
     if needsUpdate then return end
     needsUpdate = true
@@ -218,15 +369,31 @@ end)
 
 local layout = Auras.Layout
 function Auras.Layout(p, ...)
+    activeCache = nil
     useBorder()
     local a, b = layout(p, ...)
-    if p and p.auras then adjustLater(p, true) end
+    if p and p.auras and (blastaActive() or rowGap() ~= 0) then
+        layoutGroups(p)
+        adjustLater(p, true)
+    end
     return a, b
+end
+
+-- Fitted debuffs: rows of exactly per-row icons. Centering on the bar's
+-- drawn middle happens where the spot is laid out (NameplateShape). The
+-- client fills a row from the left, so a part-filled top row starts at the
+-- block's left edge.
+local function placeFitted(f, p)
+    local fw = fitSize(p)
+    if not fw then return end
+    local n = perRow()
+    pcall(f.SetFlowLayoutMaximumLineSize, f, n * fw + (n - 1) * GAP())
 end
 
 local place = Auras.Place
 function Auras.Place(f, what, at, p, ...)
     local a, b = place(f, what, at, p, ...)
+    if what == "debuffs" then pcall(placeFitted, f, p) end
     local row = ROWS[what]
     if row and (what == "cc" or what == "defensives" or
         what == "buffs" and at.L.point ~= "BOTTOM" and at.L.point ~= "TOP") then
@@ -239,6 +406,13 @@ end
 local room = Auras.Room
 function Auras.Room(what, ...)
     local across, up = room(what, ...)
+    if what == "debuffs" then
+        local fw, fh = fitSize(nil)
+        if fw then
+            local n, rows, gap = perRow(), rowCount(), GAP()
+            return n * fw + (n - 1) * gap, rows * fh + (rows - 1) * lineSpacing(fw, true) + math.ceil(fw * .35)
+        end
+    end
     local row = ROWS[what]
     if row and type(up) == "number" then
         local width = widthOf(row)
@@ -250,22 +424,58 @@ end
 local showSample = Auras.ShowSample
 function Auras.ShowSample(p, what, list, ...)
     useBorder()
+    local fw, fh
+    if what == "debuffs" then fw, fh = fitSize(p) end
+    if fw and list and #list > 0 then
+        -- Show the second row when enabled, without exceeding the configured cap.
+        local columns, rows = perRow(), rowCount()
+        local count = math.min(columns * rows, math.max(#list, rows > 1 and columns + 1 or 1))
+        if count ~= #list then
+            local entries = list
+            list = {}
+            for i = 1, count do list[i] = entries[(i - 1) % #entries + 1] end
+        end
+    end
     local shown = showSample(p, what, list, ...)
     local row = ROWS[what]
     if shown and row and list and #list > 0 then
-        local width = widthOf(row)
+        local width = fw or widthOf(row)
         if width > 0 then
-            local height = heightOf(row, width)
-            shown:SetHeight(height)
+            local height = fh or heightOf(row, width)
+            local at = p.spotAt and p.spotAt[what]
+            local flow = at and at.L
+            local reflow = fw or (what == "debuffs" and rowGap() ~= 0 and flow and type(flow.line) == "number" and flow.line > 0)
+            local gap = GAP()
+            local perLine = fw and perRow() or (reflow and math.max(1, math.floor((flow.line + gap) / (width + gap))))
+            local step = reflow and height + lineSpacing(width, fw ~= nil)
+            shown:SetHeight(reflow and height + math.floor((#list - 1) / perLine) * step or height)
+            if reflow then
+                local columns = math.min(#list, perLine)
+                shown:SetWidth(columns * width + (columns - 1) * gap)
+            end
             for i = 1, #list do
                 local button = shown.icons and shown.icons[i]
-                if button then fitButton(button, width, height, p) end
+                if button then
+                    fitButton(button, width, height, p, fw ~= nil)
+                    if reflow then
+                        local right = flow and flow.hDir == "Left"
+                        local down = flow and flow.vDir == "Down"
+                        local corner = (down and "TOP" or "BOTTOM") .. (right and "RIGHT" or "LEFT")
+                        local col, rowIndex = (i - 1) % perLine, math.floor((i - 1) / perLine)
+                        button:ClearAllPoints()
+                        button:SetPoint(corner, shown, corner, (right and -1 or 1) * col * (width + gap),
+                            (down and -1 or 1) * rowIndex * step)
+                    end
+                end
             end
         end
     end
     return shown
 end
 
-DUI.On("Login", useBorder)
+DUI.On("Login", function() activeCache = nil; useBorder() end)
+DUI.On("SettingChanged", function(scope)
+    if scope == mod.name then activeCache = nil end
+end)
 
 extras.Loaded("NameplateAuraSizes")
