@@ -2,7 +2,7 @@
 ## Title: |cff4c92ffB|r|cff34bcedl|r|cff1be7daa|r|cff36fdb8s|r|cff85fe85t|r|cffd3ff52a|r (DaylightUI Plugin)
 ## Notes: Additional settings and interface refinements for DaylightUI.
 ## Notes-deDE: Zusätzliche Einstellungen und UI-Anpassungen für DaylightUI.
-## Version: 2.1
+## Version: 2.1.1
 ## X-License: GPL-3.0-or-later
 ## SavedVariables: DaylightBlastaLanguage, DaylightBlastaLoginMessage, DaylightBlastaIntroAtLogin, DaylightBlastaIntroAtReload
 ## IconTexture: Interface\AddOns\DaylightUI_Blasta\Media\DaylightExtras.tga
