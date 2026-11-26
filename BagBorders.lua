@@ -37,11 +37,11 @@ local function square()
 end
 
 if type(items.Parts) == "function" and type(items.Paint) == "function" then
-    hooksecurefunc(items, "Paint", function(button)
+    hooksecurefunc(items, "Paint", blasta.SafeHook("BagBorders.Paint", function(button)
         if not square() then return end
         local parts = items.Parts(button)
         if parts and parts.shade then parts.shade:Hide() end
-    end)
+    end))
 end
 -- The game's quest border is round-cornered art. Square slots get their own
 -- square gold ring on top of the slot ring instead, plus a "!" for items
@@ -129,7 +129,7 @@ local function paintQuest(button)
 end
 
 if type(items.Fill) == "function" then
-    hooksecurefunc(items, "Fill", function(button)
+    hooksecurefunc(items, "Fill", blasta.SafeHook("BagBorders.Fill", function(button)
         if button:IsForbidden() then return end
         if square() then paintQuest(button) end
         -- The native item setters can repaint the slot when its contents change.
@@ -141,7 +141,7 @@ if type(items.Fill) == "function" then
         if button.ItemSlotBackground then button.ItemSlotBackground:SetAlpha(0) end
         -- The quest border and quest-start mark stay: DaylightUI sizes them to
         -- the slot, and they are the only hint that an item belongs to a quest.
-    end)
+    end))
 end
 table.insert(options, 1, {
     type = "slider", key = key, label = label, desc = desc, reload = true,

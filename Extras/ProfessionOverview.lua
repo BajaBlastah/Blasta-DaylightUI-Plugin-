@@ -13,7 +13,7 @@
 -- DaylightUI sizes the list from the width beyond Craft.W, so the list and
 -- the recipe page keep their sizes; the grip, the header and the saved spot
 -- work as before.
-local ADDON, extras = ...
+local _, extras = ...
 local DUI = DaylightUI
 local craft = DUI.Craft
 local window, data = craft and craft.Window, craft and craft.Data

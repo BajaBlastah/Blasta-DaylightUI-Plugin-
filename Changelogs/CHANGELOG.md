@@ -1,3 +1,124 @@
+# Blasta (DaylightUI Plugin) 2.4
+
+Made for DaylightUI 2.4.0: a raid marker ring on the target's portrait, equal coin shares in the loot feed, bag text sizes at the bank too, and two things DaylightUI now does itself, so Blasta's own versions are gone and your choices move over.
+
+## What's new
+
+- **What's new pages:** after login Blasta shows what a new version brings, once per account, in DaylightUI's own setup guide window right after DaylightUI's pages. For 2.4: the raid marker ring with a moving preview on your own portrait and its three settings, the coin colors with sample rows and the choice, and what moved to DaylightUI. Settings on these pages apply at once.
+- See them again any time with **Blasta → General → What's new → Show what's new in 2.4**, or `/blasta new` (`/blasta neu`).
+- **Blasta tour:** one page per area of Blasta (unit frames, cast bars, auras, nameplates, action bars, bags and loot, windows, world and info, tooltips) in the same window, each with the live preview from that page of Blasta's menu and the settings most worth trying. Only what your Blasta really has shows up: an area with nothing loaded is left out. Start it with **Start the tour** on Blasta's **Overview** or `/blasta tour`; it never opens by itself, and Blasta's menu closes when it starts.
+- Blasta's **Overview** also has a button for **What's new**, and its "New in Blasta" list shows the 2.4 news.
+
+## Target frame
+
+- **Raid marker ring** in **Blasta → Unit frames → Target → Portrait** (off by default): a small arrow on the target's portrait opens a dark ring around it with DaylightUI's eight raid markers. Click one to mark your target and the ring closes; the chip beside the arrow takes the marker off.
+  - **Open the marker ring:** **On click**, or **On hover** for marking quickly: the ring opens as soon as the mouse is on the arrow and closes a moment after it leaves.
+  - **Marker arrow position:** moves the arrow anywhere around the portrait's rim, in degrees clockwise from the top (135, bottom right, by default). The chip follows on the same line.
+  - **One piece with the portrait:** the arrow and the chip wear the portrait's own band, in its width and colors. The ring's edge is a thin 2 px line in the same colors (or gradient), without the band's black outline, and follows the portrait ring on every new target.
+  - **Round or square:** with a square or angled portrait, the ring is square too, its markers on the corners and the middles of the sides, the arrow sits on the square's edge, and the arrow and the chip wear the portrait's square frame.
+  - **Animation:** the ring grows out of the portrait in a short animation, the markers riding out and growing with it, the chip rolling out of the arrow and the arrow turning; closing runs it all back in. With DaylightUI's motion off it opens and closes at once.
+  - **No tooltips in the way:** the marker or chip under the mouse lights up in your accent color instead. The arrow shows no tooltip on hover either.
+  - Blasta's Shadow Word: Death marker on the target's health bar fades out under the open ring.
+  - Works in combat too, like DaylightUI's leader drawer. Out of combat the ring also closes on a new target or a click elsewhere. In a raid, the arrow only shows for the leader and assistants.
+
+## Loot feed
+
+- **Coin color → All coins** now gives each coin looted an equal share of the bar, from the highest to the lowest: half each for two coins, a third each for three, with a short soft blend between them. Before, the colors ran as one long gradient, so the lower coins barely showed.
+
+## Bags and bank
+
+- **Bag category text size** and **Bag stack count size** now apply to the bank and to the window for the bank and alts too, not only to the bags.
+
+## Moved to DaylightUI
+
+- **Breath bar edges:** DaylightUI 2.4.0 sets each end of the breath bar on its own: **Skins → Alerts and timers → Breath bar left end / right end** (Straight, Leans / or Leans \). Blasta's **Left edge direction** and **Right edge direction** for the breath bar are removed. Your choices carry over: top corner out is the usual angle, bottom corner out the flipped one. The fatigue and feign death bars follow, as before.
+- **Reverse unit frame slant:** DaylightUI 2.4.0 has a menu for each end of every unit frame (player, target, target of target, focus, pet, party, party pets, raid and PvP frames), and attached bars lean with it. Blasta's **Reverse unit frame slant** is removed. Where it was on, both ends of that frame are now flipped in DaylightUI, so the frame keeps its look. Each end can now be changed on its own.
+
+## Experience bar
+
+- DaylightUI 2.4.0's bar animations on the experience and reputation bar now end exactly where Blasta's angled or rounded ends do, instead of showing past them. This also covers a style picked or changed later.
+- Both ends flipped (bottom corner out on both sides) now uses DaylightUI's own shape, border and shadow included, instead of two half bars.
+
+## Angled ends
+
+- The nameplate health bar, the compact party resource bar and the other Blasta bars with **Left/Right edge direction** use DaylightUI's own flip for both ends, so a flipped end gets DaylightUI's border and shadow. With an older DaylightUI, Blasta falls back to its previous way.
+- Blasta's 11 bar animations (Frost, Arcane … By class) also show in DaylightUI 2.4.0's new bar animation choice for the experience and reputation bar.
+
+# Blasta (DaylightUI Plugin) 2.3
+
+## Windows
+
+- **Cut corner on all windows** in **Blasta → Windows → General**: every DaylightUI window gets the same cut corner at the bottom right as the chat and the damage meter: character window, talents and spellbook, professions, social, group finder, mail, quest and talk window, vendor and trainer, bags and bank. The cut is a little larger than on the chat. The resize grip runs along the cut and stays clear of the window's buttons. Off by default.
+
+## Bags
+
+- Fixed: **B** could stop opening the bags until the next reload. If Blasta's filter bar or **Old quest items** ran into an error while the bag was being laid out, DaylightUI kept the unfinished, empty bag. Now DaylightUI lays the bag out on its own, the filter goes back to **All** and the error is reported once (BugSack, `/blasta report`).
+- Category headings, stack counts, item borders and quest marks get the same protection: an error there no longer interrupts the bag.
+- **Old quest items** opens the bag the same way DaylightUI does at the bank, without opening the game's bags, and only starts once the bag window is ready.
+
+## Character window
+
+- The same protection for **C**: an error in Blasta's character window additions can no longer keep the window from opening.
+- Enchantments in the equipment list are shown in a soft enchanting gold, so they stand apart from item names and durability colors.
+- In the equipment grid, an enchantment and the durability stay on one line. Without room, the durability is shortened to "Dur. 100%" ("Haltb." in German), then the enchantment ends in "..."; the durability itself is never cut, and the tooltip shows the full enchantment.
+
+## Talents
+
+- **Blasta talent layout (test)** in **Blasta → Windows → Talents**: talent icons at DaylightUI's own size on a shared Daylight background, the tree name with its icon over a thin line, and the point thresholds (0, 5, 10 …) beside the rows. Talents you can't pick yet (too few points in the tree, or the required talent missing) are gray, and show their colors while you hover them. A talent that becomes available fades from gray into its colors along with DaylightUI's wake animation, and a newly reached row lights up: its number glows in your accent color and a light runs once across the row. With DaylightUI's motion turned off, these switch at once. On by default; turn it off to get the previous view back. Only your own talent window changes; inspect and Legacy trees keep their look.
+- `/blasta check` includes the talent layout.
+
+## Loot feed
+
+- **Coin color** in **Blasta → World → Loot → Blasta loot feed**: looted coins no longer always show a gold gradient. **Highest coin** (the new default) uses the highest coin looted: gold as soon as there is gold, silver for silver and copper, copper for copper alone. **All coins** blends from the highest coin looted to the lowest and skips coins at zero. **Always gold** keeps the previous look.
+- The loot feed preview shows a copper, a silver and a gold row (2g 34s 56c for the whole gold to silver to copper gradient), so each coin color can be checked right away.
+
+## Loot window
+
+- The square one-pixel icon border no longer jumps between thicknesses when the skin resizes the icon or the window is scaled, and DaylightUI's round outline no longer flashes up for a frame when the loot list builds a new row.
+
+## Tooltips
+
+- Disenchanting materials (dusts, essences, shards and Nexus Crystal) show their auction price even if you haven't seen the item yet this session.
+
+## Nameplates
+
+- Nameplate debuffs keep Blasta's size. A debuff that appeared on a plate during a fight kept DaylightUI's size until the fight was over, and DaylightUI's refit after combat or a scale change also reset it. Blasta now sets its size in the same moment DaylightUI sizes the icon.
+
+## Performance and maintenance
+
+- **Buff reminders** only listen to aura changes on you and your party. Before, every aura change on every nameplate and raid member in range reached Blasta and was thrown away there, many times a second in a fight.
+- Removed an unused aura preview, five unused helpers and a dozen unused local variables. Nothing you can see changes.
+
+# Blasta (DaylightUI Plugin) 2.2
+
+## Character sheet
+
+- **Character sheet layout** chooses between **Classic**, with the equipment around the model, and the new **Equipment grid**. Existing profiles keep their earlier choice until you pick one.
+- The equipment grid puts the model on the left, every equipment slot in the middle under **Armor**, **Jewelry** and **Weapons**, and the stats on the right. Each group ends with a single slot on the left (feet, neck, ranged), so the gaps line up. Shirt and tabard sit as icons below the model, and the window grows a little taller when the screen has room.
+- Group headings use the same font, colors and one-pixel underline as the stat headings.
+- Below the model, the average item level and the overall durability sit beside two icons, with tooltip labels. The item level icon is DaylightUI's own.
+- **Show durability at or below** now works in the grid. With item names on, the durability percentage appears in the line under the name, after the enchantment if there is one. With icons only, a small dot on the icon marks worn gear.
+- **Quality gradient style** offers **Automatic**, **Fade out** and **Cut corner**. Cut corner keeps a faint tint to the end and cuts only the lower corner away from the icon. Automatic uses Cut corner in the grid and Fade out in the classic layout.
+- In English, the durability line reads "Durability 42%" instead of an internal text key.
+
+## Training
+
+- When several cities charge the same discounted price, the tooltip shows one line: **Same price everywhere** when no trainer city charges more, otherwise the cities by name. The lowest total at the bottom of the window follows the same rule.
+
+## Bags
+
+- New items stay in **Recent** for its full duration instead of going straight into Blasta's material groups, such as **Leather**. With **Also show new items in their group**, they appear in Recent and in their material group. With Recent turned off, Blasta sorts them directly as before.
+- **Also show new items in their group** is translated into German.
+- **Old quest items** filters the bag to quest items whose known quests are no longer in your quest log. Select a stack and click again to delete it. Requires QuestieDB. Quest starters, active quest items and locked or protected items are skipped, and everything is checked again right before deletion. Bag tooltips mark these items as **Related quest not in quest log**.
+
+## Loot
+
+- The square one-pixel loot icon border no longer falls back to the original frame when the skin rebuilds a loot row right after Blasta styles it.
+
+## Info panel
+
+- Money in narrow data texts drops copper, then silver, to fit, and shortens very large gold amounts only in the narrowest slots. The tooltip keeps the exact amount.
+
 # Blasta (DaylightUI Plugin) 2.1.1
 
 ## Fixes

@@ -15,6 +15,11 @@ if not (cat and cat.AddCustom and cat.DeleteCustom and cat.Rename and cat.Assign
 local T = extras.Translate
 local setting = "blastaBags"
 local windowState
+function extras.ResetBagFilter()
+    if not windowState then return end
+    windowState.filter = "all"
+    for key, control in pairs(windowState.filters) do control.Pick(key == "all", true) end
+end
 
 local filterHeight = W.TAB_H or 24
 local extraHeight = filterHeight + 3
@@ -39,6 +44,27 @@ local function bagTextSize(key, baseline)
     return math.max(8, math.min(22, math.floor(size + 0.5)))
 end
 
+-- The text sizes apply to every DaylightUI bag window: the bag, the bank
+-- and the window for the bank and alts (DaylightUI builds them all alike and
+-- keeps them in bags.windows, bag first: a handful, so a plain look-up).
+local function bagWindow(frame)
+    if frame == nil then return false end
+    local list = bags.windows
+    if not list then return frame == bags.window end
+    for i = 1, #list do
+        if list[i] == frame then return true end
+    end
+    return false
+end
+local function itemsWindow(holder)
+    if holder == nil then return nil end
+    local list = bags.windows
+    if not list then return bags.window and bags.window.items == holder and bags.window or nil end
+    for i = 1, #list do
+        if list[i].items == holder then return list[i] end
+    end
+end
+
 local function addTextSize(key, label, baseline)
     extras.AddSetting(bagModule, "combineStacks", {
         type = "slider", key = key, label = label, min = 8, max = 22, step = 1, unit = "px", blastaSince = "2.1",
@@ -46,7 +72,10 @@ local function addTextSize(key, label, baseline)
         default = function() return baseline end,
         set = function(value)
             local result = DUI:Set(ADDON, key, value)
-            if bags.window and bags.window:IsShown() then window.Relayout(bags.window) end
+            for _, w in ipairs(bags.windows or {}) do
+                if w:IsShown() then window.Relayout(w) end
+            end
+            if not bags.windows and bags.window and bags.window:IsShown() then window.Relayout(bags.window) end
             return result
         end,
     }, true)
@@ -59,11 +88,14 @@ if layout.PaintHeading and layout.HeadH and layout.HEAD_SIZE and layout.HEAD_TEX
     local headHeight = layout.HeadH
     function layout.HeadH(frame, cfg)
         local height = headHeight(frame, cfg)
-        if frame == bags.window then return height - layout.HEAD_TEXT + headingHeight() end
+        if not bagWindow(frame) then return height end
+        local ok, own = pcall(headingHeight)
+        if ok then return height - layout.HEAD_TEXT + own end
+        extras.ReportOnce("BagsOrganize.HeadH", own)
         return height
     end
-    hooksecurefunc(layout, "PaintHeading", function(heading)
-        if not bags.window or heading:GetParent() ~= bags.window.items then return end
+    hooksecurefunc(layout, "PaintHeading", extras.SafeHook("BagsOrganize.PaintHeading", function(heading)
+        if not itemsWindow(heading:GetParent()) then return end
         local size = bagTextSize(headingSizeKey, layout.HEAD_SIZE)
         if heading.blastaTextSize == size then return end
         heading.blastaTextSize = size
@@ -71,18 +103,18 @@ if layout.PaintHeading and layout.HeadH and layout.HEAD_SIZE and layout.HEAD_TEX
         style.SetTextSize(heading.count, size - layout.HEAD_SIZE + style.SIZE.tiny)
         heading.text:ClearAllPoints()
         heading.text:SetPoint("LEFT", heading, "TOPLEFT", 0, 1 - headingHeight() / 2)
-    end)
+    end))
     extras.German["Bag category text size"] = "Schriftgröße der Taschenkategorien"
     addTextSize(headingSizeKey, "Bag category text size", layout.HEAD_SIZE)
 end
 
 if items.Place and items.COUNT_SIZE then
-    hooksecurefunc(items, "Place", function(button)
+    hooksecurefunc(items, "Place", extras.SafeHook("BagsOrganize.Place", function(button)
         local holder = button:GetParent()
-        if holder and bags.window and holder.dluiWindow == bags.window and button.Count then
+        if holder and button.Count and bagWindow(holder.dluiWindow) then
             style.SetTextSize(button.Count, bagTextSize(stackSizeKey, items.COUNT_SIZE))
         end
-    end)
+    end))
     extras.German["Bag stack count size"] = "Schriftgröße der Stapelzahlen"
     addTextSize(stackSizeKey, "Bag stack count size", items.COUNT_SIZE)
 end
@@ -146,22 +178,26 @@ if layout.Headed and junk and junk.Sell and junk.PriceOf and cat.Guarded and ite
     end
 
     local headed = layout.Headed
+    local function sellOnRightClick(headings)
+        for _, row in ipairs(headings) do
+            local heading = row.h
+            if not entriesByHeading[heading] then
+                local click = heading:GetScript("OnClick")
+                heading:SetScript("OnClick", function(self, button, ...)
+                    if button == "RightButton" and not (GetCursorInfo and GetCursorInfo())
+                        and not (self.key == "recent" and IsShiftKeyDown and IsShiftKeyDown())
+                        and sellCategory(self) then return end
+                    if click then return click(self, button, ...) end
+                end)
+            end
+            entriesByHeading[heading] = row.g.entries
+        end
+    end
     function layout.Headed(frame, cfg)
         local headings, taken = headed(frame, cfg)
         if frame == bags.window then
-            for _, row in ipairs(headings) do
-                local heading = row.h
-                if not entriesByHeading[heading] then
-                    local click = heading:GetScript("OnClick")
-                    heading:SetScript("OnClick", function(self, button, ...)
-                        if button == "RightButton" and not (GetCursorInfo and GetCursorInfo())
-                            and not (self.key == "recent" and IsShiftKeyDown and IsShiftKeyDown())
-                            and sellCategory(self) then return end
-                        return click(self, button, ...)
-                    end)
-                end
-                entriesByHeading[heading] = row.g.entries
-            end
+            local ok, err = pcall(sellOnRightClick, headings)
+            if not ok then extras.ReportOnce("BagsOrganize.Headed", err) end
         end
         return headings, taken
     end
@@ -198,10 +234,30 @@ local groups = {
     { "enchanting", "Enchanting materials", subclass.Enchanting or 12 },
 }
 
+-- DaylightUI checks addon groups before its own, and "New" is one of its own.
+-- So a new item must be left to "New" here. Daylight asks a second time with
+-- noRecent for "Also show new items in their group" and once an item is no
+-- longer new: then the material group takes it as usual.
+local skipRecent = false
+local assign = cat.Assign
+function cat.Assign(facts, section, noRecent, ...)
+    local previous = skipRecent
+    skipRecent = noRecent and true or false
+    local ok, key = pcall(assign, facts, section, noRecent, ...)
+    skipRecent = previous
+    if not ok then error(key, 0) end
+    return key
+end
+local function leaveToRecent(facts)
+    return facts.recent == true and not skipRecent and (not cat.RecentShown or cat.RecentShown())
+end
+extras.German["Also show new items in their group"] = "Neue Gegenstände auch in ihrer Gruppe zeigen"
+
 local function updateMaterial(key, label, id)
     local api = enabled() and DUI.API and DUI.API.For and DUI.API.For(ADDON)
     if not (api and api.AddBagGroup and search.CLASS) then return end
     api.AddBagGroup(key, { label = T(label), match = function(facts)
+        if leaveToRecent(facts) then return false end
         return facts.classID == search.CLASS.tradegoods and facts.subClassID == id
     end })
 end
@@ -281,34 +337,38 @@ end
 
 if window.LayoutChips then
     local layoutChips = window.LayoutChips
+    local function makeRoom(frame, height)
+        positionFilters(frame, height)
+        local point, relative, anchor, x, y = frame.items:GetPoint(1)
+        frame.items:ClearAllPoints()
+        frame.items:SetPoint(point, relative, anchor, x, y - extraHeight)
+    end
     function window.LayoutChips(frame, ...)
         local height = layoutChips(frame, ...)
         if windowState and frame == windowState.frame then
-            positionFilters(frame, height)
-            local point, relative, anchor, x, y = frame.items:GetPoint(1)
-            frame.items:ClearAllPoints()
-            frame.items:SetPoint(point, relative, anchor, x, y - extraHeight)
-            return height + extraHeight
+            local ok, err = pcall(makeRoom, frame, height)
+            if ok then return height + extraHeight end
+            extras.ReportOnce("BagsOrganize.LayoutChips", err)
+            if windowState.bar then windowState.bar:Hide() end
         end
         return height
     end
 
     local feel = DUI.Win and DUI.Win.Feel
     if feel and feel.Moving and feel.Settle then
-        hooksecurefunc(window, "Relayout", function(frame)
+        hooksecurefunc(window, "Relayout", extras.SafeHook("BagsOrganize.Relayout", function(frame)
             -- Native grid glides start at the previous anchor, which can now
             -- be inside the filter row after the header or chip height changes.
             if windowState and frame == windowState.frame and not frame.stale and not inCombat()
                 and feel.Moving(frame.items) then
                 feel.Settle(frame.items)
             end
-        end)
+        end))
     end
 end
 
 local apply = layout.Apply
-function layout.Apply(frame, cfg)
-    if frame.kind ~= "bag" or (not windowState and not filtersOn()) then return apply(frame, cfg) end
+local function filtered(frame, cfg)
     if not windowState then build(frame) end
     if not window.LayoutChips then
         positionFilters(frame, 0)
@@ -353,13 +413,32 @@ function layout.Apply(frame, cfg)
     return math.max(w, 355), h + (window.LayoutChips and 0 or extraHeight)
 end
 
-hooksecurefunc(window, "Changed", function(frame)
+-- Blasta's filter must never cost the player the bag. If it fails, the filter
+-- goes back to "All" and DaylightUI lays the bag out on its own.
+local function dropFilter()
+    if not windowState then return end
+    windowState.filter = "all"
+    for key, control in pairs(windowState.filters) do pcall(control.Pick, key == "all", false) end
+end
+function layout.Apply(frame, cfg)
+    if frame.kind ~= "bag" or (not windowState and not filtersOn()) then return apply(frame, cfg) end
+    local slots = frame.set and frame.set.Slots
+    local ok, w, h = pcall(filtered, frame, cfg)
+    if ok and type(w) == "number" and type(h) == "number" then return w, h end
+    extras.ReportOnce("BagsOrganize.Apply", ok and "Blasta bag filter returned no size" or w)
+    if slots then frame.set.Slots = slots end
+    frame.laid = nil
+    dropFilter()
+    return apply(frame, cfg)
+end
+
+hooksecurefunc(window, "Changed", extras.SafeHook("BagsOrganize.Changed", function(frame)
     if not windowState or frame ~= windowState.frame or windowState.filter == "all"
         or frame.Setting("view") == "categories" or frame.Setting("emptySlots") == "grouped"
         or inCombat() or frame.stale or not frame:IsShown() then return end
     window.Relayout(frame)
     window.FillAll(frame)
-end)
+end))
 
 extras.German["Sorts DaylightUI's bags with Blasta's material and standard categories, and adds Blasta's filter bar."] =
     "Sortiert DaylightUIs Taschen mit Blastas Material- und Standardkategorien und ergänzt Blastas Filterleiste."

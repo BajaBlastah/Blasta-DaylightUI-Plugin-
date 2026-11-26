@@ -18,7 +18,7 @@ local Pins = skins and skins.MapPins
 if not (Pins and Pins.On and Pins.Shows and Pins.COLORS and C_Map and C_Map.GetMapPosFromWorldPos
     and C_Map.GetMapInfo and CreateVector2D and DUI.Style and DUI.Motion) then return end
 
-local Style, L = DUI.Style, DUI.L
+local L = DUI.L
 local KEY = "mapTravelRoutes"
 local function enabled() return DUI:Get(ADDON, KEY) ~= false end
 

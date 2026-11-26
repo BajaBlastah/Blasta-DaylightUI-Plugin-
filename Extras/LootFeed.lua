@@ -14,6 +14,7 @@ local defaults = {
     lines = 5, duration = 5, alpha = 0.85, pulse = 0.55, textSize = 12, pause = true, quality = 0,
     items = true, money = true, skills = true, stackTime = 3, delta = true, historySize = 20, value = true,
     x = 0.76, y = 0.47, arrival = "right", elegantArrival = "rise", elegantGradient = .3, mode = "legacy", style = "blasta",
+    coinColor = "highest",
 }
 extras.LootFeedDefaults = defaults
 -- Settings are read many times per animation tick. Build each path once.
@@ -211,6 +212,80 @@ local function detail(entry, now, elegant)
     return table.concat(parts, " ")
 end
 
+-- Coin rows: the gradient in the coins' own colors. "highest": the highest
+-- coin looted (gold as soon as there is gold). "all": from the highest to the
+-- lowest coin looted, skipping coins at zero. "gold": always gold, as before.
+local COIN_INK = {
+    gold = { 1, 0.82, 0 },
+    silver = { 0.80, 0.82, 0.88 },
+    copper = { 0.93, 0.56, 0.30 },
+}
+local function coinInks(money)
+    local mode = option("coinColor")
+    if mode == "gold" or type(money) ~= "number" then return nil end
+    local present = {}
+    if money >= 10000 then present[#present + 1] = COIN_INK.gold end
+    if math.floor(money / 100) % 100 > 0 then present[#present + 1] = COIN_INK.silver end
+    if money % 100 > 0 then present[#present + 1] = COIN_INK.copper end
+    if #present == 0 then return nil end
+    if mode ~= "all" then return { present[1] } end
+    return present
+end
+
+-- Coin rows over several colors: each coin gets an equal share of the bar
+-- (half each for two, a third each for three), held in its color, with a
+-- short soft blend between two coins. A texture gradient has only two colors,
+-- so the bar is pieces after row.pulse: coin, blend, coin, blend, coin. The
+-- alpha falls a little along the bar and fades out over its last quarter.
+local BLEND = .08   -- share of the bar each blend between two coins takes
+local function pulsePieces(row, count)
+    local pieces = row.pulsePieces
+    if not pieces then
+        pieces = {}
+        row.pulsePieces = pieces
+    end
+    for i = #pieces + 1, 2 * count - 2 do
+        local t = row:CreateTexture(nil, "BACKGROUND", nil, 4)
+        t:SetColorTexture(1, 1, 1, 1)
+        pieces[i] = { texture = t, from = CreateColor(0, 0, 0, 0), to = CreateColor(0, 0, 0, 0) }
+    end
+    return pieces
+end
+
+-- Where piece k (1 = row.pulse) starts and ends along the bar, 0 to 1.
+local function pieceSpan(k, count)
+    local solid = (1 - (count - 1) * BLEND) / count
+    local coin = math.floor((k - 1) / 2)       -- coins before this piece
+    local start = coin * (solid + BLEND) + ((k - 1) % 2 == 1 and solid or 0)
+    return start, start + ((k - 1) % 2 == 1 and BLEND or solid)
+end
+
+local function layoutPulse(row, width)
+    local inks = row.glowInks
+    local count = inks and #inks or 1
+    local used = count > 1 and 2 * count - 1 or 1
+    local pieces = row.pulsePieces
+    if used == 1 then
+        row.pulse:SetWidth(width)
+    else
+        local a, b = pieceSpan(1, count)
+        row.pulse:SetWidth(math.max(1, (b - a) * width))
+    end
+    for i, piece in ipairs(pieces or {}) do
+        local t = piece.texture
+        t:ClearAllPoints()
+        if i + 1 <= used then
+            local before = i == 1 and row.pulse or pieces[i - 1].texture
+            local a, b = pieceSpan(i + 1, count)
+            t:SetPoint("TOPLEFT", before, "TOPRIGHT")
+            t:SetPoint("BOTTOMLEFT", before, "BOTTOMRIGHT")
+            t:SetWidth(math.max(1, (b - a) * width))
+        else
+            t:Hide()
+        end
+    end
+end
+
 local function paintGlow(row, age, strength, animate)
     local flash = animate and math.max(0, 1 - age / .65) or 0
     local alpha = strength * (.72 + .28 * flash)
@@ -221,10 +296,37 @@ local function paintGlow(row, age, strength, animate)
             from, to = CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, 0)
             row.glowFrom, row.glowTo = from, to
         end
-        from:SetRGBA(row.glowR, row.glowG, row.glowB, alpha)
-        to:SetRGBA(row.glowR, row.glowG, row.glowB, 0)
-        row.pulse:SetGradient("HORIZONTAL", from, to)
-        row.pulse:SetShown(alpha > 0)
+        local inks = row.glowInks
+        local count = inks and #inks or 1
+        if count > 1 then
+            -- Alpha along the bar: down to 75% over the first three quarters,
+            -- then out over the last quarter.
+            local function at(x)
+                if x <= .75 then return alpha * (1 - .25 * x / .75) end
+                return alpha * .75 * math.max(0, 1 - x) / .25
+            end
+            local pieces = row.pulsePieces
+            for k = 1, 2 * count - 1 do
+                local coin = math.floor((k - 1) / 2) + 1
+                local c = inks[coin]
+                local n = (k - 1) % 2 == 1 and inks[coin + 1] or c   -- a blend runs to the next coin
+                local x1, x2 = pieceSpan(k, count)
+                local texture, cFrom, cTo = row.pulse, from, to
+                if k > 1 then
+                    local piece = pieces[k - 1]
+                    texture, cFrom, cTo = piece.texture, piece.from, piece.to
+                end
+                cFrom:SetRGBA(c[1], c[2], c[3], at(x1))
+                cTo:SetRGBA(n[1], n[2], n[3], at(x2))
+                texture:SetGradient("HORIZONTAL", cFrom, cTo)
+                texture:SetShown(alpha > 0)
+            end
+        else
+            from:SetRGBA(row.glowR, row.glowG, row.glowB, alpha)
+            to:SetRGBA(row.glowR, row.glowG, row.glowB, 0)
+            row.pulse:SetGradient("HORIZONTAL", from, to)
+            row.pulse:SetShown(alpha > 0)
+        end
         row.glowAlpha = alpha
     end
 end
@@ -320,9 +422,11 @@ local function paintRow(row, entry, index, count, now, elegant)
     row.name:SetPoint("RIGHT", row.value, "LEFT", -6, 0)
     row.name:SetText(entry.money and "" or entry.name)
     local r, g, b
+    local inks = entry.money and coinInks(entry.money)
     if entry.money then
         r, g, b = unpack(style.INK.MONEY)
         row.value:SetTextColor(r, g, b)
+        if inks then r, g, b = unpack(inks[1]) end
     elseif entry.rank then
         r, g, b = style.Accent()
         style.InkText(row.name, "VALUE")
@@ -345,7 +449,7 @@ local function paintRow(row, entry, index, count, now, elegant)
         local iconBounds = entry.money and row.icon or row.iconEdge
         row.pulse:SetPoint("TOPLEFT", iconBounds, "TOPRIGHT")
         row.pulse:SetPoint("BOTTOMLEFT", iconBounds, "BOTTOMRIGHT")
-        row.pulse:SetWidth(width * .65)
+        row.pulseWidth = width * .65
     else
         local opacity = option("alpha")
         local border, background = style.BORDER, style.BACKGROUND
@@ -354,13 +458,18 @@ local function paintRow(row, entry, index, count, now, elegant)
         -- Fade continuously from the icon to the start of the angled edge.
         row.pulse:SetPoint("TOPLEFT", 1, -1)
         row.pulse:SetPoint("BOTTOMLEFT", 1, 1)
-        row.pulse:SetWidth(width - cut - 3)
+        row.pulseWidth = width - cut - 3
         gradientStrength = option("pulse")
     end
-    if row.glowR ~= r or row.glowG ~= g or row.glowB ~= b then
+    local inkKey = inks and #inks > 1 and entry.money .. ":" .. #inks or nil
+    if row.glowR ~= r or row.glowG ~= g or row.glowB ~= b or row.glowInkKey ~= inkKey then
         row.glowR, row.glowG, row.glowB = r, g, b
+        row.glowInkKey = inkKey
+        row.glowInks = inkKey and inks or nil
+        if inkKey then pulsePieces(row, #inks) end
         row.glowAlpha = nil
     end
+    layoutPulse(row, row.pulseWidth)
     row.gradientStrength = gradientStrength
     paintGlow(row, now - entry.updated, gradientStrength, not gradientPreview and DUI.Motion.On())
     row.entry = entry
@@ -459,7 +568,7 @@ end
 
 local function add(list, entry, record, previewStack)
     local now = clock()
-    entry.key = entry.money and "coins" or entry.key
+    entry.key = entry.money and (entry.coinKey or "coins") or entry.key
     if not entry.key then return end
     build()
     if record then
@@ -515,7 +624,12 @@ local function playPreview(static)
         item("epic", "Venomspitter", 135317, 4, 1),
         { key = "tailoring", name = T("Tailoring"), icon = 136249, rank = 154, max = 225 },
         item("ring", "Ring of the Webweaver", 133356, 3, 1),
-        { money = 161, icon = 133784 },
+        -- One row per coin color: copper alone, silver with copper, and gold
+        -- with silver and copper (all three colors for "All coins"). Kept
+        -- apart (coinKey) so the preview doesn't stack them into one row.
+        { money = 67, icon = 133784, coinKey = "coins:copper" },
+        { money = 161, icon = 133784, coinKey = "coins:silver" },
+        { money = 23456, icon = 133784, coinKey = "coins:gold" },
         item("silk", "Spider Silk", 132905, 1, 4),
         item("silk", "Spider Silk", 132905, 1, 4),
     }
@@ -899,6 +1013,20 @@ local function standardOnly(row)
     return row
 end
 
+local coinColor = control("dropdown", "coinColor", "Coin color")
+coinColor.blastaSince = "2.3"
+coinColor.desc = "Colors the gradient of looted coins: the highest coin looted, or every coin from the highest to the lowest."
+coinColor.order = { "highest", "all", "gold" }
+coinColor.values = { highest = "Highest coin", all = "All coins", gold = "Always gold" }
+coinColor.disabled = function() return not option("money") end
+coinColor.hidden = function() return not blastaEnabled() end
+extras.German["Coin color"] = "Münzfarbe"
+extras.German["Colors the gradient of looted coins: the highest coin looted, or every coin from the highest to the lowest."] =
+    "Färbt den Verlauf erbeuteter Münzen: in der höchsten erbeuteten Münze oder in allen, von der höchsten bis zur niedrigsten."
+extras.German["Highest coin"] = "Höchste Münze"
+extras.German["All coins"] = "Alle Münzen"
+extras.German["Always gold"] = "Immer Gold"
+
 local quality = control("dropdown", "quality", "Minimum item quality")
 quality.disabled = function() return not option("items") end
 quality.order = { 0, 1, 2, 3, 4 }
@@ -910,7 +1038,7 @@ quality.values = {
 function extras.LootFeedPage()
     local groups = {
         { label = "Blasta loot feed", items = {
-            useBlasta, style, arrival, elegantArrival,
+            useBlasta, style, arrival, elegantArrival, coinColor,
             { type = "button", label = "Preview loot feed", func = testFeed,
                 disabled = function() return not blastaEnabled() and not (qos.enabled and native.Preview) end },
             { type = "button", label = "Move loot feed", desc = "Drag a preview row to move the feed. Click this button again to finish.",

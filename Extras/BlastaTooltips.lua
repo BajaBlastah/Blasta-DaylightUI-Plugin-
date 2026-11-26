@@ -185,6 +185,9 @@ local function allowed(tip)
     local key = modifiers[config().blastaOriginal]
     return not (key and key())
 end
+-- Extensions add rows to the card model instead of changing the hidden native
+-- tooltip, whose line count and dimensions drive rebuilding and placement.
+extras.QuestCleanupTooltipCard = allowed
 local function plain(value)
     if issecretvalue and issecretvalue(value) then return nil end
     return value
@@ -884,6 +887,44 @@ local function disenchantHeading(text)
         or heading == "entzauberungsergebnisse" or heading == "disenchanted from" or heading == "entzaubert von"
 end
 
+-- Disenchanting materials by item ID. GetItemInfoInstant finds an item by
+-- name only once that item sits in the client's cache, so a dust or shard you
+-- haven't seen this session had no ID and no price even after an auction scan.
+-- Their localized names come from the IDs instead, requested once at login.
+local DISENCHANT_MATS = {
+    10940, 11083, 11137, 11176, 16204, -- dusts
+    10938, 10939, 10998, 11082, 11134, 11135, 11174, 11175, 16202, 16203, -- essences
+    10978, 11084, 11138, 11139, 11177, 11178, 14343, 14344, 20725, -- shards, Nexus Crystal
+}
+local matByName, matsPending = {}, true
+-- The client has C_Item's versions; the old global GetItemInfo may be gone.
+local itemNameByID = C_Item and C_Item.GetItemNameByID
+local itemInfoByID = C_Item and C_Item.GetItemInfo or rawget(_G, "GetItemInfo")
+local function materialName(id)
+    local name = itemNameByID and plain(itemNameByID(id))
+    if name == nil and itemInfoByID then name = plain((itemInfoByID(id))) end
+    return name
+end
+local function loadMaterialNames()
+    matsPending = false
+    for _, id in ipairs(DISENCHANT_MATS) do
+        local name = materialName(id)
+        if type(name) == "string" and name ~= "" then
+            matByName[name:lower()] = id
+        else
+            matsPending = true
+            if C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(id) end
+        end
+    end
+end
+local function materialID(name, lookup)
+    local id = plain(lookup(name))
+    if type(id) == "number" then return id end
+    if matsPending then loadMaterialNames() end
+    return matByName[name:lower()]
+end
+DUI.On("Login", loadMaterialNames)
+
 local function priceDisenchantResults(rows, auctionAPI)
     local daylightPrices = DUI.AuctionPrices
     local lookup = C_Item and C_Item.GetItemInfoInstant
@@ -898,7 +939,7 @@ local function priceDisenchantResults(rows, auctionAPI)
         if not chance then chance, low = right:match("^(%d+[.,]?%d*)%%%s*%((%d+)") end
         if name and chance then
             outcomes = outcomes + 1
-            local id = plain(lookup(name))
+            local id = materialID(name, lookup)
             local price
             if type(id) == "number" then
                 if auctionAPI and auctionAPI.GetAuctionPriceByItemID then
@@ -2086,6 +2127,9 @@ local function modelFor(tip, data)
         row.rightColor = Tip.ID_VALUE
         model.lines[#model.lines + 1] = row
     end
+    if kind == "Item" and extras.QuestCleanup and extras.QuestCleanup.AppendTooltipModel then
+        extras.QuestCleanup.AppendTooltipModel(tip, data, model)
+    end
     if kind == "Item" then levelRequirementInk(model, minLevel) end
     daylightInk(model, tip, data)
     if wearable then equipmentFacts(model, subtitle, slotName, slotText, minLevel, itemClass, itemSubclass, slotKey) end
@@ -3036,7 +3080,7 @@ local function sizeKeyOf(line)
     return "blastaBodySize", "Everything else"
 end
 
-local GAP, CHIPS, CHIP_ROW = 12, 470, 30   -- between two tooltips; room the view chips take
+local CHIPS, CHIP_ROW = 470, 30   -- room the view chips take
 -- The kinds the preview shows. Clicking "Item" again while it's showing
 -- goes through the item kinds: an ordinary item, a recipe, a quest item.
 local VIEWS = { { key = "item", label = "Item" }, { key = "mine", label = "Your item" },

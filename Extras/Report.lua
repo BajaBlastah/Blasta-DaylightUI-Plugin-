@@ -149,7 +149,7 @@ function Report.Close()
 end
 
 local function build()
-    local W, Win, Style = DUI.Widgets, DUI.Win, DUI.Style
+    local W, Win = DUI.Widgets, DUI.Win
     f = Win.New({ name = "DaylightUIBlastaReport", w = Report.WIDTH,
         h = Win.HEADER + 12 + Report.BOX + 12 + 56, strata = "DIALOG" })
     f.title:SetText(extras.Translate("Blasta report"))

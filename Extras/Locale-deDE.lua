@@ -426,7 +426,6 @@ L["From below"] = "Von unten"
 L["From above"] = "Von oben"
 L["From left"] = "Von links"
 L["From right"] = "Von rechts"
-L["Reverse unit frame slant"] = "Schräge umkehren"
 L["Follow nameplate edge"] = "Namensplakette übernehmen"
 L["Left cast bar edge"] = "Linke Kante der Zauberleiste"
 L["Right cast bar edge"] = "Rechte Kante der Zauberleiste"
@@ -440,7 +439,6 @@ L["Plays the entrance animations on the visible nameplate preview icons."] = "Sp
 L["Flight and timers"] = "Flug & Timer"
 L["Displays and timers"] = "Anzeigen & Timer"
 L["Timers"] = "Timer"
-L["Mirror timers"] = "Atem- und Erschöpfungsleisten"
 L["Addon"] = "Addon"
 L["Skin settings"] = "Skin-Einstellungen"
 L["Skin overview"] = "Skin-Übersicht"
@@ -939,3 +937,26 @@ local news = {
         "Charakterfenster: Gesundheit und Ressource als Leisten über den Werten.",
 }
 for k, v in pairs(news) do if not extras.German[k] then extras.German[k] = v end end
+L["Raid marker ring"] = "Markierungsring am Porträt"
+L["A small arrow on the target's portrait opens a ring with the eight raid markers. Click one to mark your target; the chip beside the arrow takes the marker off. Works in combat too."] =
+    "Ein kleiner Pfeil am Porträt des Ziels öffnet einen Ring mit den acht Zielmarkierungen. Ein Klick markiert dein Ziel, das Symbol neben dem Pfeil nimmt die Markierung wieder ab. Funktioniert auch im Kampf."
+L["Raid markers"] = "Zielmarkierungen"
+L["Click: open or close the marker ring"] = "Klick: Markierungsring öffnen oder schließen"
+L["Click: mark your target"] = "Klick: Ziel markieren"
+L["Clear marker"] = "Markierung entfernen"
+L["Click: take your target's marker off"] = "Klick: Markierung vom Ziel entfernen"
+L["Open the marker ring"] = "Markierungsring öffnen"
+L["On click"] = "Per Klick"
+L["On hover"] = "Per Mauszeiger"
+L["On click opens the ring when you click the arrow. On hover opens it as soon as the mouse is on the arrow, for marking quickly; it closes again when the mouse leaves the ring."] =
+    "Per Klick öffnet den Ring mit einem Klick auf den Pfeil. Per Mauszeiger öffnet ihn, sobald die Maus auf dem Pfeil ist, für schnelles Markieren; er schließt sich wieder, wenn die Maus den Ring verlässt."
+L["Marker arrow position"] = "Position des Markierungspfeils"
+L["Where the arrow sits on the portrait's rim, in degrees clockwise from the top: 90 is the right side, 180 the bottom. The chip that takes the marker off sits outside the ring on the same line."] =
+    "Wo der Pfeil am Rand des Porträts sitzt, in Grad im Uhrzeigersinn von oben: 90 ist rechts, 180 unten. Das Symbol zum Entfernen der Markierung sitzt auf derselben Linie außen am Ring."
+L["Point at it to open the marker ring"] = "Mit der Maus darauf zeigen, um den Markierungsring zu öffnen"
+
+-- The lines above this point after `L = {}` went to that local table: hand
+-- them to Blasta's German table too.
+for key, value in pairs(L) do
+    if not extras.German[key] then extras.German[key] = value end
+end

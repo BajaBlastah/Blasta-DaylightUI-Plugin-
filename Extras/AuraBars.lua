@@ -254,14 +254,6 @@ local function prepare(set)
     mode(set.debuffs, "debuff")
 end
 
--- Whether a frame's buffs or debuffs are set to show as bars (for the
--- preview's right-click jump to the aura bar settings).
-function extras.AuraBarsOn(frameId, kind)
-    local settings = mod.db and mod.db.blastaAuraBars
-    local entry = settings and settings[frameId]
-    return type(entry) == "table" and type(entry[kind]) == "table" and entry[kind].enabled == true
-end
-
 -- How many bars share a row (1 to 3), on the frames that support it.
 local function columnsOf(state)
     if not (state and STRETCHABLE[state.frame]) then return 1 end

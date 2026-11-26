@@ -117,7 +117,6 @@ function extras.ShowDaylightRequirements(page, mod, requiredKey)
     return page
 end
 
-local previewRoutes = setmetatable({}, { __mode = "k" })
 local portraitOffsets = {   -- label -> { switch, native name, Blasta name, native spot (none = drag) }
     ["Leader crown"] = { "showLeader", "leader", "blastaLeader" },
     ["PvP flag"] = { "showPvP", "pvp", "blastaPvP" },

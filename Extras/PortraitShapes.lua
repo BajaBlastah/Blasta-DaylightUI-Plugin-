@@ -36,7 +36,6 @@ end
 if not (supported.player and mod.defaults.portraits) then return end
 local key = "blastaPortraitShape"
 mod.defaults.portraits[key] = "round"
-extras.PortraitShapeUnits = not nativeShape and supported or nil
 function extras.MigratePortraitShape(profile)
     local db = profile.modules and profile.modules.UnitFrames
     if type(db) ~= "table" then return end
@@ -47,6 +46,12 @@ function extras.MigratePortraitShape(profile)
         if db.portraits[key] == nil then db.portraits[key] = previous end
     end
     local looks = type(db.portraits) == "table" and db.portraits or nil
+    -- Remove saved settings from the retired experimental portrait display.
+    if looks then
+        looks.blastaPortraitInBar = nil
+        looks.blastaPortraitInBarOpacity = nil
+        if looks[key] ~= nil and not values[looks[key]] and not replacements[looks[key]] then looks[key] = nil end
+    end
     local replacement = looks and replacements[looks[key]]
     for unit in pairs(supported) do
         local settings = type(db[unit]) == "table" and db[unit] or nil

@@ -744,16 +744,29 @@ DUI.On("Login", function()
     ready = true
     _G["BINDING_NAME_CLICK " .. KEY_BUTTON .. ":LeftButton"] = L(CAST_REMINDER)
     local events = CreateFrame("Frame")
-    events:RegisterEvent("UNIT_AURA")
     for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "SPELLS_CHANGED",
         "BAG_UPDATE_DELAYED", "GET_ITEM_INFO_RECEIVED", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST",
-        "GROUP_ROSTER_UPDATE", "UNIT_CONNECTION", "UNIT_FLAGS" }) do
+        "GROUP_ROSTER_UPDATE" }) do
         pcall(events.RegisterEvent, events, event)
     end
-    -- UNIT_AURA fires for every unit in range. Drop foreign units first.
+    -- UNIT_AURA fires for every unit in range, nameplates and raids included,
+    -- many times a second in a fight. Asked for the player and the party only
+    -- (two units per frame), the client never calls Lua for the others. The
+    -- handler below still drops foreign units, for a client that can't filter.
     local unitEvents = { UNIT_AURA = true, UNIT_CONNECTION = true, UNIT_FLAGS = true }
     local trackedUnits = { player = true, party1 = true, party2 = true, party3 = true, party4 = true }
-    events:SetScript("OnEvent", function(_, event, unit, success)
+    local unitFrames = {}
+    local filtered = type(events.RegisterUnitEvent) == "function"
+    for _, pair in ipairs(filtered and { { "player", "party1" }, { "party2", "party3" }, { "party4" } } or { {} }) do
+        local f = CreateFrame("Frame")
+        unitFrames[#unitFrames + 1] = f
+        for event in pairs(unitEvents) do
+            if not filtered then pcall(f.RegisterEvent, f, event)
+            elseif pair[2] then pcall(f.RegisterUnitEvent, f, event, pair[1], pair[2])
+            else pcall(f.RegisterUnitEvent, f, event, pair[1]) end
+        end
+    end
+    local function onEvent(_, event, unit, success)
         local unitEvent = unitEvents[event]
         if unitEvent and ((issecretvalue and issecretvalue(unit)) or not trackedUnits[unit]) then return end
         if InCombatLockdown() and event ~= "PLAYER_REGEN_DISABLED" and event ~= "PLAYER_ENTERING_WORLD" then return end
@@ -772,7 +785,9 @@ DUI.On("Login", function()
             elseif success == false or not watchedItems[plain(unit)] then return end
         end
         queue()
-    end)
+    end
+    events:SetScript("OnEvent", onEvent)
+    for _, f in ipairs(unitFrames) do f:SetScript("OnEvent", onEvent) end
     queue()
 end)
 DUI.On("LoginReveal", function()

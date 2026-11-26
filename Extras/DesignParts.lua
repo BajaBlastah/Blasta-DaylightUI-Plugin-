@@ -3,7 +3,7 @@
 --   * the raid marker on the target and focus frames (DaylightUI keeps it at
 --     the name; its own nudge, markerX/Y, works there but has no setting);
 --   * the time on a nameplate's cast bar.
-local ADDON, extras = ...
+local _, extras = ...
 local DUI = DaylightUI
 local VERSION = "1.9.8"
 local german = extras.German

@@ -25,20 +25,33 @@ local shell, original
 local masks, maskKey, halves
 local sides = { "LEFT", "RIGHT" }
 local attached = setmetatable({}, { __mode = "k" })
+-- Whether tex wears mask m already: a bar animation's layers copy the fill's
+-- masks themselves (Style.SameMasks), so they may have ours before we look.
+local function wears(tex, m)
+    for i = 1, tex:GetNumMaskTextures() do
+        if tex:GetMaskTexture(i) == m then return true end
+    end
+    return false
+end
 local function clip(tex)
     if not (tex and tex.AddMaskTexture) or attached[tex] == maskKey then return end
-    if maskKey then
-        if not attached[tex] then
-            tex:AddMaskTexture(masks[1])
-            tex:AddMaskTexture(masks[2])
-        end
-    elseif attached[tex] then
-        tex:RemoveMaskTexture(masks[1])
-        tex:RemoveMaskTexture(masks[2])
+    for _, m in ipairs(masks or {}) do
+        local has = wears(tex, m)
+        if maskKey and not has then tex:AddMaskTexture(m)
+        elseif not maskKey and has then tex:RemoveMaskTexture(m) end
     end
     attached[tex] = maskKey
 end
 extras.ExperienceClip = clip
+
+-- Every texture drawn on a bar: since DaylightUI 2.4.0 the experience and
+-- reputation bars can wear a bar animation, whose layers sit on the bar and
+-- must end where its shaped ends do.
+local function clipLayers(bar)
+    for _, region in ipairs({ bar:GetRegions() }) do
+        if region.GetObjectType and region:GetObjectType() == "Texture" then clip(region) end
+    end
+end
 
 local function slantTexture(side, reverse, cut)
     local left = side == "LEFT"
@@ -47,8 +60,10 @@ local function slantTexture(side, reverse, cut)
         .. (cut * 4 > 48 and "-sharp.png" or ".png")
 end
 
--- The native shell can reverse one end. For the reverse trapezoid, draw
--- two native single-end shells, each clipped at the centre of the bar.
+-- DaylightUI 2.4.0 and later flip both ends of a shell themselves. Before
+-- that the native shell could reverse one end only: for the reverse
+-- trapezoid, draw two native single-end shells, each clipped at the centre.
+local bothNative = type(Style.EndsOf) == "function"
 local function reverseShell(cut)
     local frame = XP.frame
     if not halves then
@@ -92,6 +107,8 @@ local function layoutMasks()
     local fullHeight = XP.frame:GetHeight()
     local cut = side and math.min(w / 4, fullHeight * 0.65) or 0
     local reverseBoth = l and r and left == "bottom" and right == "bottom"
+    local nativeBoth = reverseBoth and bothNative
+    if nativeBoth then reverseBoth = false end
     if reverseBoth then
         local old = Style.GetSlant(XP.frame)
         if old and old.side then Style.Slant(XP.frame, nil, 0) end
@@ -101,7 +118,7 @@ local function layoutMasks()
             for _, half in ipairs(halves) do half.clipper:Hide() end
             shell:Show()
         end
-        local under = left == "bottom" and "left" or right == "bottom" and "right" or nil
+        local under = nativeBoth and "both" or left == "bottom" and "left" or right == "bottom" and "right" or nil
         local old = Style.GetSlant(XP.frame)
         if (side or (old and old.side)) and (not old or old.side ~= side or old.cut ~= cut or old.under ~= under) then
             Style.Slant(XP.frame, side, cut, nil, under)
@@ -141,8 +158,12 @@ local function layoutMasks()
         for _, m in ipairs(masks) do m:SetTexture("Interface\\Buttons\\WHITE8X8", "CLAMP", "CLAMP") end
     end
     for _, b in ipairs({ XP.bar, XP.banked, XP.rested, XP.repBar }) do
-        clip(b:GetStatusBarTexture())
+        local fill = b:GetStatusBarTexture()
+        clip(fill)
         clip(Style.BarBack(b))
+        -- Layers that copy the fill's masks follow it now.
+        if Style.ResyncMasks then Style.ResyncMasks(fill) end
+        clipLayers(b)
     end
     clip(XP.shimmer)
     clip(XP.repShine)
@@ -374,6 +395,29 @@ hooksecurefunc(XP, "Apply", function()
     layoutMasks()
     applyText()
 end)
+-- A bar animation picked or changed builds its layers later: cut them too.
+local fxQueued
+local function clipAnimations()
+    fxQueued = nil
+    if not (shell and maskKey) then return end
+    for _, b in ipairs({ XP.bar, XP.repBar }) do
+        if b then clipLayers(b) end
+    end
+end
+local function queueAnimations(bar)
+    if fxQueued or not maskKey or (bar and bar ~= XP.bar and bar ~= XP.repBar) then return end
+    fxQueued = true
+    C_Timer.After(0, clipAnimations)
+end
+local BarFx = DUI.BarFx
+if BarFx then
+    for _, name in ipairs({ "Apply", "Refresh", "Restart" }) do
+        if type(BarFx[name]) == "function" then
+            hooksecurefunc(BarFx, name, extras.SafeHook("ExperienceBar", queueAnimations))
+        end
+    end
+end
+
 hooksecurefunc(XP, "Update", function()
     updateZones()
     if not (shell and maskKey) then return end

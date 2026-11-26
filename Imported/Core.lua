@@ -16,10 +16,41 @@ local defaults = {}
 local function Guard(fn, ...)
 	return xpcall(fn, geterrorhandler(), ...)
 end
-ns.Guard = Guard
 
 -- Settings, kept in the player's DaylightUI profile. `pages` (Options.lua) go in this plugin's
 -- own section of the options window, under the Plugins heading.
+-- Blasta's breath bar edges and its "Reverse unit frame slant" became
+-- DaylightUI 2.4.0's own settings, one per bar end: the saved choices move
+-- there once DaylightUI has them, so nothing looks different.
+local REVERSED_UNITS = { "player", "target", "targettarget", "focus", "pet", "party", "partyPet", "raid", "arena" }
+local function endFor(direction) -- Blasta's "straight" | "top" | "bottom" -> angled, flipped
+	if direction ~= "top" and direction ~= "bottom" then return false, false end
+	return true, direction == "bottom"
+end
+local function retireEnds(modules)
+	local skinsModule = DUI:GetModule("Skins")
+	local skins = modules.Skins
+	if type(skins) == "table" and skinsModule and type(skinsModule.defaults) == "table"
+		and skinsModule.defaults.breathSlantLeft ~= nil then
+		if skins.mirrorLeft ~= nil then skins.breathSlantLeft, skins.breathUnderLeft = endFor(skins.mirrorLeft) end
+		if skins.mirrorRight ~= nil then skins.breathSlant, skins.breathUnder = endFor(skins.mirrorRight) end
+		skins.mirrorLeft, skins.mirrorRight = nil, nil
+	end
+	local unitModule = DUI:GetModule("UnitFrames")
+	local units = modules.UnitFrames
+	local d = unitModule and unitModule.defaults
+	if type(units) == "table" and type(d) == "table" and type(d.player) == "table"
+		and d.player.slantUnderOuter ~= nil then
+		for _, unit in ipairs(REVERSED_UNITS) do
+			local cfg = units[unit]
+			if type(cfg) == "table" and cfg.reverseSlant ~= nil then
+				if cfg.reverseSlant == true then cfg.slantUnder, cfg.slantUnderOuter = true, true end
+				cfg.reverseSlant = nil
+			end
+		end
+	end
+end
+
 local function migrateProfiles()
 	local old = "DaylightAddonSkins"
 	-- This key is also used by Glowey's current plugin. Shared skin settings
@@ -34,6 +65,7 @@ local function migrateProfiles()
 	for _, profile in pairs(DUI.DB.Root().profileData) do
 		local modules = type(profile) == "table" and profile.modules
 		if type(modules) == "table" and ns.MigratePortraitShape then ns.MigratePortraitShape(profile) end
+		if type(modules) == "table" then retireEnds(modules) end
 		local previous = type(modules) == "table" and modules[old]
 		if type(previous) == "table" then
 			local legacy = {}
@@ -92,6 +124,8 @@ function ns.RegisterSettings(pages)
 	defaults.auraIconCorners = false
 	defaults.experienceStyle = ns.ExperienceDefaults
 	defaults.squareSpellbookIcons = false
+	defaults.talentWorkbench = true
+	defaults.windowCorners = false
 	defaults.characterPanel = ns.CharacterPanelDefaults
 	defaults.zoneTitleExtras = ns.ZoneTitleExtrasDefaults
 	defaults.dispelOverlay = false

@@ -349,37 +349,6 @@ hooksecurefunc(Auras, "DrawSample", function(c, _, _, kind)
     if which and c and not (extras.AuraBarWidth and extras.AuraBarWidth(c)) then fitPool(c.pool, which) end
 end)
 
-function extras.GeneralAuraPreview(parent)
-    local host = CreateFrame("Frame", nil, parent)
-    local rows = {}
-    for i, kind in ipairs({ "buff", "debuff" }) do
-        local c = Auras.Plain(host)
-        local label = Style.Text(host, 12, "CENTER")
-        rows[i] = { frame = c, label = label, kind = kind }
-    end
-    return {
-        frame = host,
-        Refresh = function(width, room)
-            useBorder()
-            local size = math.max(12, math.min(28, math.floor((width / 2 - 24) / 4), (room or 100) - 32))
-            for i, row in ipairs(rows) do
-                local buff, c = row.kind == "buff", row.frame
-                local offset = (i == 1 and -.25 or .25) * width
-                row.label:SetText(extras.Translate(buff and "Buffs" or "Debuffs"))
-                row.label:SetPoint("TOP", host, "TOP", offset, -2)
-                c:SetPoint("TOP", host, "TOP", offset, -23)
-                rules[c] = { kind = row.kind, names = GROUP, cfg = {} }
-                Auras.SetOwnSize(c, size, 3)
-                local list = Groups.SAMPLES[buff and "buffs" or "debuffs"]
-                Auras.DrawSample(c, list, #list, buff and "tilebuff" or "gdebuff",
-                    { anchor = "TOPLEFT", perRow = 4, timers = false, counts = false })
-            end
-            host:SetSize(width, size + 26)
-            return size + 26
-        end,
-    }
-end
-
 hooksecurefunc(Auras, "ShowSample", function(set)
     if not set then return end
     for _, key in ipairs({ "buffs", "debuffs" }) do

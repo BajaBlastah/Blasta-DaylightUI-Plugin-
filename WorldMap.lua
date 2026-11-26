@@ -1,5 +1,4 @@
-local ADDON, extras = ...
-local DUI = DaylightUI
+local _, extras = ...
 
 -- The zone levels on the world map are DaylightUI's own since 1.9.4 (Skins:
 -- "Zone levels", the hovered zone's range after its name). Blasta keeps the

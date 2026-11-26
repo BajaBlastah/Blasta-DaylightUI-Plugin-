@@ -3,6 +3,7 @@ local DUI = DaylightUI
 local mod = DUI:GetModule("Nameplates")
 local ns = mod and mod.ns
 local Auras, Sizes = ns and ns.Auras, extras.AuraSizes
+local Style = DUI.Style
 if not (mod and mod.defaults and Auras and Auras.Layout and Auras.ShowSample and Auras.Place and Auras.Room
     and Auras.FitPending and Auras.KINDS and type(Auras.ASPECT) == "number" and type(Auras.BORDER_PX) == "number"
     and Sizes) then return end
@@ -34,7 +35,6 @@ local ROWS = {
 }
 -- Blasta's menu gathers these on the Auras page, Nameplates tab.
 local function route(label) return { page = "Auras", tab = "Nameplates", label = label } end
-extras.NameplateAuraRoute = route
 for _, row in pairs(ROWS) do
     row.path, row.names = Sizes.Names(row.key)
     row.field = row.key:match("([^.]+)$")
@@ -346,7 +346,52 @@ local function queueFit(p)
     end)
 end
 
+-- The very moment DaylightUI sizes one of a plate's aura buttons: when the
+-- client makes it for a new aura (in a fight too, inside the client's own
+-- call, where an addon may still size it) and when DaylightUI refits it. Its
+-- last step is placing the halo. Blasta sets its own size right there, in the
+-- same call. Queued for the next frame, or held until the fight was over, new
+-- debuffs kept DaylightUI's size for the whole fight.
+local containers = setmetatable({}, { __mode = "k" })   -- container -> { plate, what }
+local function fitOne(btn, p, what)
+    local row = ROWS[what]
+    local width = row and widthOf(row) or 0
+    if width <= 0 then return end
+    local fw, fh
+    if what == "debuffs" then fw, fh = fitSize(p) end
+    if fw then
+        fitButton(btn, fw, fh, p, true)
+    else
+        local height = heightOf(row, width)
+        fitButton(btn, width, height, p, height ~= nativeHeight(width))
+    end
+end
+if Style and Style.PlaceAuraHalo then
+    hooksecurefunc(Style, "PlaceAuraHalo", extras.SafeHook("NameplateAuraSizes.Halo", function(_, btn)
+        if type(btn) ~= "table" or not btn.GetParent or not blastaActive() then return end
+        local at = containers[btn:GetParent()]
+        if not at then
+            -- Not parented to its container: a new button is its list's last.
+            for c, info in pairs(containers) do
+                local list = c.buttons
+                if list and list[#list] == btn then at = info; break end
+            end
+        end
+        if at and (at.plate.blastaAuraUnit or at.plate.unit) then fitOne(btn, at.plate, at.what) end
+    end))
+end
+
+-- Known from the moment they're made: the client can make the first buttons
+-- inside SetUnit, before a hook on it runs.
+local function mapContainers(p)
+    for what, c in pairs(p and p.auras or {}) do
+        if not containers[c] then containers[c] = { plate = p, what = what } end
+    end
+end
+if Auras.Create then hooksecurefunc(Auras, "Create", mapContainers) end
+
 hooksecurefunc(Auras, "SetUnit", function(p, unit)
+    mapContainers(p)
     local old = p.blastaAuraUnit
     if old and byUnit[old] == p then byUnit[old] = nil end
     if issecretvalue and issecretvalue(unit) then unit = nil end
@@ -355,6 +400,15 @@ hooksecurefunc(Auras, "SetUnit", function(p, unit)
         byUnit[unit] = p
         queueFit(p)
     end
+end)
+
+-- DaylightUI refits existing buttons to its own size whenever the plate's
+-- pixel border changes (a new scale) or a setting does. In combat that refit
+-- waits for the restrictions to lift, and it can then run after Blasta's own
+-- deferred pass: the debuffs fell back to DaylightUI's size until the next
+-- aura change. Fit every plate again right after DaylightUI's late refit.
+hooksecurefunc(Auras, "FitPending", function()
+    for _, plate in pairs(byUnit) do queueFit(plate) end
 end)
 
 DUI.On("Login", function()

@@ -13,6 +13,7 @@ local german = extras.German
 german["Cheapest"] = "Am günstigsten"
 german["Training discounts"] = "Trainerrabatte"
 german["Lowest total by faction (estimate)"] = "Günstigste Fraktion (geschätzt)"
+german["Same price everywhere"] = "Überall gleich"
 
 local function money(value)
     return DUI.Widgets.Money(value, { color = false })
@@ -51,9 +52,19 @@ local function cheapestFirst(a, b)
     return a.name < b.name
 end
 
+-- Several cities at one price: a single line instead of a repeated list.
+-- "Everywhere" only when no trainer city for this lesson charges more.
+local function sameLabel(entries, everywhere)
+    if everywhere then return extras.Translate("Same price everywhere") end
+    local names = {}
+    for i, entry in ipairs(entries) do names[i] = entry.name end
+    return table.concat(names, ", ")
+end
+
 local function showPrices(row, tooltip)
-    local sorted = {}
+    local sorted, all = {}, 0
     for _, price in pairs(pricesFor(row, UnitFactionGroup("player"))) do
+        all = all + 1
         if price.price < row.cost then sorted[#sorted + 1] = price end
     end
     if #sorted == 0 then return end
@@ -61,6 +72,13 @@ local function showPrices(row, tooltip)
     tips.Clear()
     tips.Gap()
     tips.Sub(extras.Translate("Training discounts"))
+    if #sorted > 1 and sorted[1].price == sorted[#sorted].price then
+        local label = sameLabel(sorted, #sorted == all) .. (" (−%d%%)"):format(sorted[1].pct)
+        tips.Line(label, money(sorted[1].price), style.INK.GOOD)
+        tips.Flush(tooltip)
+        tooltip:Show()
+        return
+    end
     for _, entry in ipairs(sorted) do
         local best = entry.price == sorted[1].price
         local label = entry.name .. (" (−%d%%)"):format(entry.pct)
@@ -89,9 +107,18 @@ local function bestTotal(rows)
             if not next(totals) then return end
         end
     end
-    local best
+    local best, tied, count = nil, {}, 0
     for _, total in pairs(totals or {}) do
+        count = count + 1
         if not best or cheapestFirst(total, best) then best = total end
+    end
+    if not best then return end
+    for _, total in pairs(totals) do
+        if total.price == best.price then tied[#tied + 1] = total end
+    end
+    if #tied > 1 then
+        table.sort(tied, cheapestFirst)
+        return { price = best.price, name = sameLabel(tied, #tied == count) }
     end
     return best
 end

@@ -218,3 +218,86 @@ if info and info.Panel and info.Panel.Layout and info.MeterFrame and info.MeterF
         return option(infoMod, key, "Damage meter corner", "Applies to separate damage meter windows.")
     end
 end
+
+-- Every DaylightUI window (character, talents and spellbook, professions,
+-- social, group finder, mail, vendor, bags and bank ...) can carry the same
+-- cut corner at the bottom right as the chat and the damage meter. A window is
+-- a shell built as a window that has DaylightUI's header with its X; that
+-- leaves out tour cards, roll cards and other window-colored panels.
+local Win = DUI.Win
+local windowKey = "windowCorners"
+extras.German["Window corner"] = "Fensterecke"
+extras.German["Cut corner on all windows"] = "Abgeschrägte Ecke an allen Fenstern"
+extras.German["Cuts the bottom right corner of every DaylightUI window, bags included, like the chat and the damage meter."] =
+    "Schrägt die Ecke unten rechts an allen DaylightUI-Fenstern ab, Taschen eingeschlossen, wie bei Chat und Schadensmesser."
+if Win and Win.Header and Style.GetShell and Style.Shells and Style.LayoutShell then
+    local WINDOW_CUT = 16   -- a little more than the chat's 12, for the larger windows
+    local cutWindows = setmetatable({}, { __mode = "k" })
+    local gripSpots = setmetatable({}, { __mode = "k" })
+    local function windowSide()
+        return DUI:Get(ADDON, windowKey) == true and "right" or nil
+    end
+    local function isWindow(frame)
+        local shell = type(frame) == "table" and Style.GetShell(frame)
+        return shell and shell.opts and shell.opts.window and frame.close ~= nil
+    end
+    -- A resize grip in that corner: its strokes run parallel to the cut. With a
+    -- 16 px cut DaylightUI's own spot (4 px in) puts the long stroke just inside
+    -- the cut, so the grip stays there and never moves toward the window's
+    -- buttons. A grip closer to the corner (the bags, 1 px in) moves in only as
+    -- far as that spot, and back when the corner is turned off.
+    local function fitWindowGrip(frame, size)
+        local grip = frame.grip
+        if not (grip and grip.GetPoint) then return end
+        local spot = gripSpots[grip]
+        if size == 0 then
+            if spot and spot.inset ~= 0 then
+                grip:ClearAllPoints()
+                grip:SetPoint(spot.point, spot.relative, spot.relativePoint, spot.x, spot.y)
+                spot.inset = 0
+            end
+            return
+        end
+        if not spot then
+            local point, relative, relativePoint, x, y = grip:GetPoint(1)
+            if point ~= "BOTTOMRIGHT" then return end
+            spot = { point = point, relative = relative, relativePoint = relativePoint, x = x or 0, y = y or 0, inset = 0 }
+            gripSpots[grip] = spot
+        end
+        local reach = math.max(0, size / 2 - 4)
+        local x, y = math.min(spot.x, -reach), math.max(spot.y, reach)
+        local inset = x .. ":" .. y
+        if spot.inset == inset then return end
+        grip:ClearAllPoints()
+        grip:SetPoint(spot.point, spot.relative, spot.relativePoint, x, y)
+        spot.inset = inset
+    end
+    local function applyWindow(frame)
+        if not isWindow(frame) then return end
+        local side = windowSide()
+        if not side and not cutWindows[frame] then return end
+        cutWindows[frame] = true
+        fitWindowGrip(frame, cut(frame, side, WINDOW_CUT))
+    end
+    local function sweep()
+        for shell in Style.Shells() do
+            local frame = shell.GetParent and shell:GetParent()
+            if frame then applyWindow(frame) end
+        end
+    end
+    -- New windows get it once their header (and X) exists, open windows again
+    -- whenever their shell is laid out anew (border, scale, look).
+    hooksecurefunc(Win, "Header", extras.SafeHook("WindowCorners.Header", applyWindow))
+    hooksecurefunc(Style, "LayoutShell", extras.SafeHook("WindowCorners.LayoutShell", function(shell)
+        local frame = shell and shell.GetParent and shell:GetParent()
+        if frame and cutWindows[frame] then applyWindow(frame) end
+    end))
+    DUI.On("Login", extras.SafeHook("WindowCorners.Login", sweep))
+    DUI.On("SettingChanged", extras.SafeHook("WindowCorners.Setting", function(scope, setting)
+        if scope == ADDON and setting == windowKey then sweep() end
+    end))
+    extras.WindowCornerGroup = { label = "Window corner", items = {
+        { type = "toggle", key = windowKey, label = "Cut corner on all windows", blastaSince = "2.3",
+            desc = "Cuts the bottom right corner of every DaylightUI window, bags included, like the chat and the damage meter." },
+    } }
+end

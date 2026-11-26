@@ -101,6 +101,15 @@ local function shear(tex, top, bottom)
     pcall(tex.SetVertexOffset, tex, 4, bottom, 0)
 end
 local markers = setmetatable({}, { __mode = "k" })
+-- The raid marker ring (TargetMarkerRing.lua) opens over the target frame's
+-- health bar: the marker on that bar fades out under it and back after.
+local targetAlpha = 1
+function extras.TargetDeathMarkerAlpha(alpha)
+    targetAlpha = alpha
+    local target = units and units.frames and units.frames.target
+    local pin = target and markers[target.health]
+    if pin then pin:SetAlpha(alpha) end
+end
 local function marker(bar)
     local pin = CreateFrame("StatusBar", nil, bar)
     pin:SetAllPoints(bar)
@@ -115,6 +124,8 @@ local function marker(bar)
     hot:SetFrameLevel(pin:GetFrameLevel() + 1)
     pin.line, pin.hot = line, hot
     markers[bar] = pin
+    local target = units and units.frames and units.frames.target
+    if target and bar == target.health then pin:SetAlpha(targetAlpha) end
     return pin
 end
 

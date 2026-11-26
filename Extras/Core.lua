@@ -307,6 +307,15 @@ function extras.GeneralPage()
                 default = function() return defaultLanguage end,
                 desc = "Changes Blasta's language for all profiles. Type /reload to apply." },
         } },
+        { label = "What's new", items = {
+            { type = "button", label = "What's new",
+                text = function()
+                    return extras.Translate("Show what's new in %s"):format(extras.WhatsNewVersion or version or "")
+                end,
+                func = function() if extras.ShowWhatsNew then extras.ShowWhatsNew() end end,
+                hidden = function() return extras.ShowWhatsNew == nil end,
+                desc = "Shows the pages about this Blasta version again: what's new, with previews and the new settings. Also /blasta new." },
+        } },
         { label = "Chat", items = {
             { type = "toggle", label = "Show Blasta login message", get = loginMessageEnabled,
                 set = function(value) DaylightBlastaLoginMessage = value; return true end,
@@ -347,6 +356,27 @@ function extras.Outline(flags) return flags end
 function extras.Compatible(name)
     local mod = DUI:GetModule(name)
     return mod and mod.ns
+end
+
+-- A Blasta addition that fails must never break the DaylightUI function it
+-- extends. DaylightUI marks its bag as laid out before it lays it out, so one
+-- error in the middle left the bag empty until the next reload: B seemed to do
+-- nothing. The error still goes to the error handler (BugSack, /blasta report),
+-- once per part and session.
+local reported = {}
+function extras.ReportOnce(part, err)
+    if reported[part] then return end
+    reported[part] = true
+    local handler = geterrorhandler and geterrorhandler()
+    if handler then handler(err) end
+end
+
+-- For hooksecurefunc: runs fn and swallows its error after reporting it.
+function extras.SafeHook(part, fn)
+    return function(...)
+        local ok, err = pcall(fn, ...)
+        if not ok then extras.ReportOnce(part, err) end
+    end
 end
 
 function extras.FindSetting(mod, key)

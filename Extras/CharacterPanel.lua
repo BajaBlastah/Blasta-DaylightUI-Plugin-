@@ -10,13 +10,27 @@ local tr = extras.Translate
 local root = "characterPanel"
 local function get(key) return DUI:Get(ADDON, root .. "." .. key) end
 local function enabled() return get("enabled") == true end
+local function gridSelected()
+    local layout = get("layout")
+    if layout == "classic" then return false end
+    if layout == "grid" then return true end
+    return get("refined") ~= false -- Preserve the earlier toggle on old profiles.
+end
+local function refined() return enabled() and gridSelected() end
 extras.CharacterPanelDefaults = {
     enabled = false, square = true, border = 3, enchants = true,
     durability = true, durabilityThreshold = 50, itemLevel = true, itemLevelSize = 11,
-    qualityGradient = false, qualityGradientAlpha = 0.2, gearCheck = "always",
+    qualityGradient = false, qualityGradientAlpha = 0.2, qualityGradientStyle = "auto", gearCheck = "always", refined = true,
 }
 extras.CharacterPanelGroup = { label = "Appearance", items = {
     { type = "toggle", key = root .. ".enabled", label = "Enable Blasta Character Panel" },
+    { type = "dropdown", key = root .. ".layout", label = "Character sheet layout",
+        values = { classic = "Classic", grid = "Equipment grid" }, order = { "classic", "grid" },
+        desc = "Choose the classic equipment around the model or the equipment grid. Both keep your existing appearance settings.",
+        get = function() return gridSelected() and "grid" or "classic" end,
+        set = function(value) if value == "classic" or value == "grid" then return DUI:Set(ADDON, root .. ".layout", value) end end,
+        default = function() return "grid" end,
+        disabled = function() return not enabled() end },
     { type = "toggle", key = root .. ".square", label = "Square equipment icons",
         disabled = function() return not enabled() end },
     { type = "slider", key = root .. ".border", label = "Equipment border thickness",
@@ -56,7 +70,17 @@ if gradientSupported then
     items[#items + 1] = { type = "slider", key = root .. ".qualityGradientAlpha", label = "Quality gradient opacity",
         min = 0, max = 1, step = 0.05, unit = "%",
         disabled = function() return not enabled() or get("qualityGradient") ~= true end }
+    items[#items + 1] = { type = "dropdown", key = root .. ".qualityGradientStyle", label = "Quality gradient style", blastaSince = "2.2",
+        desc = "Automatic uses the cut corner in the equipment grid and the fading gradient in the classic layout.",
+        values = { auto = "Automatic", fade = "Fade out", cut = "Cut corner" }, order = { "auto", "fade", "cut" },
+        disabled = function() return not enabled() or get("qualityGradient") ~= true end }
 end
+extras.German["Quality gradient style"] = "Stil des Qualitätsverlaufs"
+extras.German["Automatic uses the cut corner in the equipment grid and the fading gradient in the classic layout."] =
+    "Automatisch nutzt im Ausrüstungsraster die abgeschrägte Ecke und im klassischen Aufbau den auslaufenden Verlauf."
+extras.German["Automatic"] = "Automatisch"
+extras.German["Fade out"] = "Auslaufend"
+extras.German["Cut corner"] = "Abgeschrägte Ecke"
 
 local playerSlots = setmetatable({}, { __mode = "k" })
 local page
@@ -143,9 +167,20 @@ local function buildCheck(page)
 end
 
 if checkSupported then
-    hooksecurefunc(pageAPI, "PaintFooter", function(current)
+    hooksecurefunc(pageAPI, "PaintFooter", extras.SafeHook("CharacterPanel.PaintFooter", function(current)
         local check = current.foot and current.foot.blastaGearCheck
         if not check then return end
+        if current.foot.blastaGrid then
+            -- The sets button and gear summary live below the model in the
+            -- grid view. Reserve this entire footer for warnings and ammo.
+            local ammo = current.foot.ammo
+            local text = ammo and ammo:GetText()
+            local width = type(text) == "string" and text ~= "" and ammo:GetStringWidth() or 0
+            width = readable(width, "number") and width or 0
+            check:ClearAllPoints()
+            check:SetPoint("LEFT", current.foot, "LEFT", width > 0 and width + 14 or 0, 0)
+            check:SetPoint("RIGHT", current.foot, "RIGHT", 0, 0)
+        end
         if not checkEnabled() then check:Hide(); return end
         local missing, worn = 0, 0
         for _, slot in pairs(current.slots) do
@@ -167,63 +202,107 @@ if checkSupported then
         dura:SetWidth(math.max(1, right))
         check:SetShown(left + right + 12 <= width)
         if check.hover then highlightGear(check, check.hover) end
-    end)
+    end))
 end
 function paintGradient(slot, item, show, highlighted)
     local gradient = slot.blastaQualityGradient
     local alpha = highlighted and 0.32 or (get("qualityGradientAlpha") or 0.2)
     if not (show or highlighted) or alpha <= 0 or slot:GetWidth() <= slot.size + 8 then
-        if gradient then gradient:Hide() end
+        if gradient then gradient:Hide(); gradient.blastaCorner:Hide() end
         return
     end
     local right = slot.side == "right"
     if not gradient then
         gradient = slot:CreateTexture(nil, "BACKGROUND", nil, -1)
         gradient:SetColorTexture(1, 1, 1, 1)
+        -- The lower strip with one corner cut off at the far end. The rest of
+        -- the gradient stays square; only that one corner is slanted.
+        gradient.blastaCorner = slot:CreateTexture(nil, "BACKGROUND", nil, -1)
+        gradient.blastaCorner:SetColorTexture(1, 1, 1, 1)
         slot.blastaQualityGradient = gradient
     end
+    local corner = gradient.blastaCorner
     local edge = get("square") ~= false and slot.edge and slot.edge.frame or slot.icon
     local shell = edge ~= slot.icon and slot.edge.shell
     local border = shell and shell.border
     local top = border and border.TOP or edge
     local bottom = border and border.BOTTOM or edge
     local extension = DUI.Pixel.Px(slot, 2)
-    if gradient.blastaEdge ~= edge or gradient.blastaExtension ~= extension then
+    -- "fade": the earlier look, fully transparent toward the model with a
+    -- slanted end. "cut": square, a faint tint at the end and one cut corner.
+    local style = get("qualityGradientStyle")
+    local cutStyle = style == "cut" or (style ~= "fade" and refined())
+    local cut = cutStyle and DUI.Pixel.Px(slot, 8) or 0
+    if gradient.blastaEdge ~= edge or gradient.blastaExtension ~= extension or gradient.blastaCut ~= cut
+        or gradient.blastaSide ~= right or gradient.blastaCutStyle ~= cutStyle then
+        gradient.blastaCutStyle = cutStyle
         gradient.blastaEdge, gradient.blastaExtension = edge, extension
+        gradient.blastaCut, gradient.blastaSide = cut, right
         local overlap = edge ~= slot.icon and extension / 2 or 0
         gradient:ClearAllPoints()
+        for vertex = 1, 4 do
+            gradient:SetVertexOffset(vertex, 0, 0)
+            corner:SetVertexOffset(vertex, 0, 0)
+        end
         if right then
             gradient:SetPoint("LEFT", slot, "LEFT", -extension, 0)
             gradient:SetPoint("TOPRIGHT", top, "TOPLEFT", overlap, 0)
-            gradient:SetPoint("BOTTOMRIGHT", bottom, "BOTTOMLEFT", overlap, 0)
-            gradient:SetVertexOffset(2, 8, 0)
+            gradient:SetPoint("BOTTOMRIGHT", bottom, "BOTTOMLEFT", overlap, cut)
         else
             gradient:SetPoint("TOPLEFT", top, "TOPRIGHT", -overlap, 0)
-            gradient:SetPoint("BOTTOMLEFT", bottom, "BOTTOMRIGHT", -overlap, 0)
+            gradient:SetPoint("BOTTOMLEFT", bottom, "BOTTOMRIGHT", -overlap, cut)
             gradient:SetPoint("RIGHT", slot, "RIGHT", extension, 0)
-            gradient:SetVertexOffset(4, -8, 0)
         end
+        corner:ClearAllPoints()
+        -- Vertex 2 is the lower left, 4 the lower right: pull the far one in.
+        if cutStyle then
+            corner:SetPoint("TOPLEFT", gradient, "BOTTOMLEFT")
+            corner:SetPoint("TOPRIGHT", gradient, "BOTTOMRIGHT")
+            corner:SetHeight(cut)
+            if right then corner:SetVertexOffset(2, cut, 0)
+            else corner:SetVertexOffset(4, -cut, 0) end
+        elseif right then gradient:SetVertexOffset(2, 8, 0)
+        else gradient:SetVertexOffset(4, -8, 0) end
+        gradient.blastaR = nil -- Repaint the colors for the new style.
     end
     local r, g, b
     if highlighted then r, g, b = 1, 0.65, 0.15
     else r, g, b = char.Gear.QualityColor(item.quality) end
     if gradient.blastaR ~= r or gradient.blastaG ~= g or gradient.blastaB ~= b
         or gradient.blastaAlpha ~= alpha or gradient.blastaRight ~= right then
-        local start, finish = CreateColor(r, g, b, alpha), CreateColor(r, g, b, 0)
+        -- End on a faint tint instead of nothing, so the far edge and its
+        -- cut corner stay readable against the window.
+        local start, finish = CreateColor(r, g, b, alpha), CreateColor(r, g, b, cutStyle and alpha * 0.4 or 0)
         if right then start, finish = finish, start end
         gradient:SetGradient("HORIZONTAL", start, finish)
+        corner:SetGradient("HORIZONTAL", start, finish)
         gradient.blastaR, gradient.blastaG, gradient.blastaB = r, g, b
         gradient.blastaAlpha, gradient.blastaRight = alpha, right
     end
     if not gradient:IsShown() then gradient:Show() end
+    corner:SetShown(cutStyle)
 end
+
+local ENCHANT_INK = { 1, 0.82, 0.38 }
 
 local function durability(item)
     if get("durability") == false or not item.max or item.max <= 0 then return end
     local percent = math.floor(item.cur * 100 / item.max + 0.5)
     if percent > (get("durabilityThreshold") or 50) and not item.wear then return end
     local color = percent <= 25 and slots.RED or percent <= 50 and slots.AMBER or slots.DIM
-    return tr("Gear durability short: %d%%"):format(percent), color
+    -- The key is only a lookup name; English needs its own readable text.
+    local key = "Gear durability short: %d%%"
+    local text = tr(key)
+    if text == key then text = "Durability %d%%" end
+    return text:format(percent), color, percent
+end
+-- For a grid line that has no room for the full word.
+extras.German["Durability abbreviated: %d%%"] = "Haltb. %d%%"
+local function shortDurability(percent)
+    local key = "Durability abbreviated: %d%%"
+    local text = tr(key)
+    if text == key then text = "Dur. %d%%" end
+    return text:format(percent)
 end
 
 if pageAPI.Rects and pageAPI.Place then
@@ -273,7 +352,7 @@ local function paintLevel(slot, item, show)
     badge:Show()
 end
 
-hooksecurefunc(slots, "Paint", function(slot, item)
+hooksecurefunc(slots, "Paint", extras.SafeHook("CharacterPanel.Paint", function(slot, item)
     if not playerSlots[slot] then return end
     local on = enabled()
     local edge = slot.edge
@@ -320,19 +399,45 @@ hooksecurefunc(slots, "Paint", function(slot, item)
         paintGradient(slot, item, state.showGradient, state.highlighted)
     end
     paintLevel(slot, item, on and equipment and get("itemLevel") ~= false and item.level ~= nil)
-    if not on or not equipment then return end
-    slot.corner:SetText("")
-    local wear, color = durability(item)
-    local enchant = get("enchants") ~= false and item.enchant
-    slot.line:SetText(enchant or wear or "")
-    if enchant and not slots.ENCHANT then
-        slot.line:SetTextColor(style.Accent())
-    else
-        local ink = (enchant and slots.ENCHANT) or color or slots.DIM
-        slot.line:SetTextColor(ink[1], ink[2], ink[3])
+    if extras.PaintCharacterDurability then
+        local wear = on and equipment and durability(item)
+        -- Grid with names: the percentage sits in the text line below the
+        -- name. Icons only: the dot on the icon is the only room left.
+        extras.PaintCharacterDurability(slot, item, refined() and not slot.names and wear ~= nil and wear ~= false,
+            char.Setting and char.Setting("repairAt"))
     end
-    slot.dot:SetShown(wear ~= nil and item.wear ~= nil)
-end)
+    slot.blastaLine = nil
+    if not on or not equipment then
+        if refined() and on and not item.empty and not item.ammo then
+            slot.line:SetText("")
+            slot.lineFull = ""
+            if slots.FitText then slots.FitText(slot) end
+        end
+        return
+    end
+    slot.corner:SetText("")
+    if slot.cornerBg then slot.cornerBg:Hide() end
+    local wear, color, percent = durability(item)
+    local enchant = get("enchants") ~= false and item.enchant
+    local text = enchant or wear or ""
+    slot.blastaLine = nil
+    if refined() and enchant and wear then
+        -- One line in the grid: the enchant, then the colored durability.
+        -- Without room, FitText shortens the durability and then the enchant.
+        local code = ("|cff%02x%02x%02x"):format(
+            math.floor(color[1] * 255 + 0.5), math.floor(color[2] * 255 + 0.5), math.floor(color[3] * 255 + 0.5))
+        text = enchant .. "  " .. code .. wear .. "|r"
+        slot.blastaLine = { full = text, enchant = enchant, short = code .. shortDurability(percent) .. "|r" }
+    end
+    slot.line:SetText(text)
+    slot.lineFull = text
+    -- Enchantments in a soft enchanting gold: apart from the quality-colored
+    -- item names and from the durability colors.
+    local ink = (enchant and ENCHANT_INK) or color or slots.DIM
+    slot.line:SetTextColor(ink[1], ink[2], ink[3])
+    slot.dot:SetShown(not refined() and wear ~= nil and item.wear ~= nil)
+    if slots.FitText then slots.FitText(slot) end
+end))
 
 -- A name a little too long for the room beside its icon: DaylightUI breaks it
 -- onto a second line although the space toward the model is free. Such a name
@@ -352,17 +457,47 @@ if slots.FitText then
     -- Main hand, off hand and ranged stand side by side under the model.
     local bottom = {}
     for _, key in ipairs(char.Gear.BOTTOM or { "MainHand", "SecondaryHand", "Ranged" }) do bottom[key] = true end
+    -- Enchant and durability always stay on one line: the full text if it
+    -- fits, else "Dur. 42%", else the enchant cut short with "..." in front of
+    -- it (the tooltip keeps the whole enchant). The durability is never cut.
+    local CHAR = "[%z\1-\127\194-\244][\128-\191]*"
+    local function fitLine(h, ...)
+        local line = h.blastaLine
+        if not line then return fitText(h, ...) end
+        h.line:SetText(line.full)
+        local width = h.line:GetWidth()
+        local function fits(text)
+            h.line:SetText(text)
+            local own = natural(h.line)
+            return own ~= nil and own <= width + 0.5
+        end
+        if readable(width, "number") and width > 0 and not fits(line.full) then
+            local short = line.enchant .. "  " .. line.short
+            if not fits(short) then
+                local chars = {}
+                for c in line.enchant:gmatch(CHAR) do chars[#chars + 1] = c end
+                local lo, hi, best = 1, #chars - 1, nil
+                while lo <= hi do
+                    local mid = math.floor((lo + hi) / 2)
+                    local cut = table.concat(chars, "", 1, mid):gsub("[%s,]+$", "") .. "...  " .. line.short
+                    if fits(cut) then best, lo = cut, mid + 1 else hi = mid - 1 end
+                end
+                h.line:SetText(best or line.short)
+            end
+        end
+        return fitText(h, ...)
+    end
     function slots.FitText(h, ...)
         if playerSlots[h] and h.names and h.name and h.px and not bottom[h.key] then
             local width = h:GetWidth()
             if readable(width, "number") then
                 local room = math.max(0, width - h.px - (h.gap or slots.GAP or 10))
                 local want = natural(h.name)
-                local reach = want and want > room and want <= room + NAME_REACH and math.ceil(want) + 1 or room
+                local reach = not refined() and want and want > room and want <= room + NAME_REACH and math.ceil(want) + 1 or room
                 if math.abs((h.name:GetWidth() or 0) - reach) > 0.5 then h.name:SetWidth(reach) end
             end
         end
-        return fitText(h, ...)
+        return fitLine(h, ...)
     end
 end
 
@@ -371,6 +506,7 @@ function slots.PaintEnchant(slot, item, ...)
     if playerSlots[slot] and enabled() and not item.empty then
         local enchant = get("enchants") ~= false and item.enchant
         local wear, color = durability(item)
+        if refined() then wear = nil end
         local display = {}
         for key, value in pairs(item) do display[key] = value end
         display.enchant = slot.names and enchant and wear or (not slot.names and enchant or nil)
@@ -383,7 +519,7 @@ function slots.PaintEnchant(slot, item, ...)
     return paintEnchant(slot, item, ...)
 end
 
-hooksecurefunc(pageAPI, "Build", function(built)
+hooksecurefunc(pageAPI, "Build", extras.SafeHook("CharacterPanel.Build", function(built)
     page = built
     for _, slot in pairs(page.slots or {}) do
         local shell = slot.edge and slot.edge.shell
@@ -391,7 +527,7 @@ hooksecurefunc(pageAPI, "Build", function(built)
         playerSlots[slot] = { border = opts and opts.borderPx, corner = opts and opts.cornerPx }
     end
     if checkSupported then buildCheck(page) end
-end)
+end))
 
 DUI.On("SettingChanged", function(scope, key)
     if scope == ADDON and type(key) == "string" and key:sub(1, #root + 1) == root .. "." and page and page:IsVisible() then

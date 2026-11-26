@@ -7,6 +7,8 @@ extras.Edges = Edges
 local choices = { straight = "Straight", top = "Top corner projects", bottom = "Bottom corner projects" }
 local order = { "straight", "top", "bottom" }
 local shapes = setmetatable({}, { __mode = "k" })
+-- DaylightUI 2.4.0 and later flip both ends at once (Style.EndsOf came with it).
+local bothNative = type(Style.EndsOf) == "function"
 
 function Edges.Options(mod, key, label, fallback, disabled)
     return { type = "dropdown", key = key, label = label, values = choices, order = order, disabled = disabled,
@@ -35,9 +37,10 @@ local function flipClip(clip, side, sharp)
     if stop then stop:SetTexture(reversedTexture(side, true, sharp), "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE") end
 end
 
--- The native shell knows one reversed end. Its mask positions already fit
--- either orientation, including a shared reference. Swap the remaining
--- masks after the native layout, without allocating additional masks.
+-- DaylightUI flips both ends itself (2.4.0), border and shadow included, but
+-- not on a piece laid against a reference (ref): there it leans the usual way.
+-- Only those ends get their masks swapped after the native layout, without
+-- allocating additional masks.
 hooksecurefunc(Style, "LayoutSlant", function(frame)
     local s = shapes[frame]
     if not (s and (s.flipLeft or s.flipRight)) then return end
@@ -61,13 +64,15 @@ function Edges.Apply(frame, left, right, cut, ref, keepRight)
     local l, r = left ~= "straight" and cut > 0, right ~= "straight" and cut > 0
     local side = l and (r and "both" or "left") or (r and "right" or nil)
     if not side then ref = nil end
-    local under = not ref and (l and left == "bottom" and "left" or r and right == "bottom" and "right" or nil) or nil
+    local lFlip, rFlip = l and left == "bottom", r and right == "bottom"
+    local under = not ref and (lFlip and rFlip and (bothNative and "both" or "left")
+        or lFlip and "left" or rFlip and "right" or nil) or nil
     local s = shapes[frame] or {}
     shapes[frame] = s
     s.left, s.right, s.cut, s.ref = l and left or "straight", r and right or "straight", cut, ref
     s.keepRight = keepRight
-    s.flipLeft = l and left == "bottom" and under ~= "left"
-    s.flipRight = r and right == "bottom" and under ~= "right"
+    s.flipLeft = lFlip and under ~= "left" and under ~= "both"
+    s.flipRight = rFlip and under ~= "right" and under ~= "both"
     Style.Slant(frame, side, cut, ref, under)
 end
 

@@ -2,7 +2,7 @@
 ## Title: |cff4c92ffB|r|cff34bcedl|r|cff1be7daa|r|cff36fdb8s|r|cff85fe85t|r|cffd3ff52a|r (DaylightUI Plugin)
 ## Notes: Additional settings and interface refinements for DaylightUI.
 ## Notes-deDE: Zusätzliche Einstellungen und UI-Anpassungen für DaylightUI.
-## Version: 2.1.1
+## Version: 2.4
 ## X-License: GPL-3.0-or-later
 ## SavedVariables: DaylightBlastaLanguage, DaylightBlastaLoginMessage, DaylightBlastaIntroAtLogin, DaylightBlastaIntroAtReload
 ## IconTexture: Interface\AddOns\DaylightUI_Blasta\Media\DaylightExtras.tga
@@ -16,7 +16,6 @@ Extras\Settings.lua
 Extras\Locale-deDE.lua
 Extras\AuctionLocale-deDE.lua
 Extras\Profiles.lua
-Extras\UnitFrameSlants.lua
 Extras\PortraitShapes.lua
 Extras\PartyPortraits.lua
 Extras\PartyPowerBar.lua
@@ -32,10 +31,12 @@ Extras\AfkScreen.lua
 Extras\BarVisuals.lua
 Extras\LevelBadges.lua
 Extras\PortraitIconOffsets.lua
+Extras\TargetMarkerRing.lua
 Extras\AuraFit.lua
 Extras\AuraBars.lua
 Extras\TargetAuraShape.lua
 Extras\Databar.lua
+Extras\GoldTextFit.lua
 Extras\TopRightLayout.lua
 Extras\DispelHighlights.lua
 Extras\ExperienceBar.lua
@@ -64,21 +65,24 @@ Data\Training\WeaponSkills.lua
 Data\Training\TrainerFactions.lua
 Extras\BookTraining.lua
 Extras\TrainingPrices.lua
-Extras\MirrorTimers.lua
 Extras\CcRing.lua
 Extras\LootRollIcon.lua
 Extras\FlightBanner.lua
 Extras\ChatWhisper.lua
 Extras\ChatMicroMenu.lua
 Extras\TalentRows.lua
+Extras\TalentStyle.lua
 Extras\FriendDetails.lua
 Extras\DungeonFilters.lua
 Extras\LootFeed.lua
 Extras\InteractionCast.lua
 Extras\BagsOrganize.lua
+Extras\QuestCleanup.lua
 Extras\CharacterStats.lua
+Extras\CharacterDurability.lua
 Extras\CharacterPanel.lua
-Extras\CharacterLayout.lua
+Extras\CharacterGrid.lua
+Extras\CharacterSheet.lua
 Extras\ProfessionTabs.lua
 Extras\CraftShine.lua
 Extras\RecipeChance.lua
@@ -124,5 +128,7 @@ Extras\AuraIconCorners.lua
 Extras\PanelCorners.lua
 Extras\IconFeedback.lua
 Extras\LootSpace.lua
+Extras\WhatsNew.lua
+Extras\Tour.lua
 Imported\Core.lua
 Imported\Options.lua

@@ -1,3 +1,4 @@
+local _, extras = ...
 local DUI = DaylightUI
 local character = DUI.Char and DUI.Char.CharacterPage
 if GetLocale() ~= "deDE" or not (character and type(character.RefreshStats) == "function") then return end
@@ -10,7 +11,7 @@ local shortLabels = {
     pet_speed = "Lauftempo",
 }
 
-hooksecurefunc(character, "RefreshStats", function(page)
+hooksecurefunc(character, "RefreshStats", extras.SafeHook("CharacterStats.RefreshStats", function(page)
     for _, group in pairs(page.stats.groups) do
         for _, row in ipairs(group.rows) do
             if row.row and row:IsShown() and row.label and row.value then
@@ -24,4 +25,4 @@ hooksecurefunc(character, "RefreshStats", function(page)
             end
         end
     end
-end)
+end))

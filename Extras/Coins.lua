@@ -14,7 +14,7 @@
 --
 -- Only the coins are swapped (and the amount moved to one piece); nothing is
 -- added or removed, and a secret line is left as it is.
-local ADDON, extras = ...
+local _, extras = ...
 local DUI = DaylightUI
 local mod = DUI:GetModule("Tooltip")
 if not (DUI.CoinIcon and DUI.Widgets and DUI.Widgets.Money and hooksecurefunc) then return end

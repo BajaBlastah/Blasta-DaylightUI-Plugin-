@@ -68,9 +68,88 @@ local function label(box, p, i)
     return l
 end
 
+-- A row newly reached in Blasta's talent layout: its number lights up in the
+-- accent and fades back, and one light runs across the row. Found by
+-- comparing the tree's points with the last fill (one number per tree), only
+-- for the same tree of the same talent set, and only going up. The light is
+-- made the first time; both run on DaylightUI's tween driver and stop when
+-- done. With motion off, nothing.
+local Motion = DUI.Motion
+local GLOW = DUI.MEDIA and DUI.MEDIA .. "glow.png"
+local function rowLight(box, row, pitch, size)
+    local grid = box.grid
+    if not (grid and grid.GetFrameLevel and GLOW and Motion and Motion.Sweep) then return end
+    local light = box.blastaRowLight
+    if not light then
+        local holder = CreateFrame("Frame", nil, box)
+        local tex = holder:CreateTexture(nil, "OVERLAY")
+        tex:SetTexture(GLOW)
+        tex:SetBlendMode("ADD")
+        tex:Hide()
+        light = { holder = holder, tex = tex }
+        box.blastaRowLight = light
+    end
+    local holder, tex = light.holder, light.tex
+    holder:SetFrameLevel((grid:GetFrameLevel() or 1) + 10)
+    holder:ClearAllPoints()
+    holder:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, -(row * pitch))
+    holder:SetPoint("TOPRIGHT", grid, "TOPRIGHT", 0, -(row * pitch))
+    holder:SetHeight(size)
+    tex:SetHeight(size * 1.6)
+    local ar, ag, ab = Style.Accent()
+    Motion.Sweep(tex, holder, { width = pitch * 2.2, dur = .6, alpha = .45, color = { ar, ag, ab }, key = light })
+end
+local function labelPulse(l)
+    if not (Motion and Motion.Tween) then return end
+    local ar, ag, ab = Style.Accent()
+    local off = Style.INK and Style.INK.OFF or { .5, .5, .5 }
+    l.blastaPulse = l.blastaPulse or {}
+    Motion.Tween(l.blastaPulse, 1, 0, .9, function(v)
+        l:SetTextColor(off[1] + (ar - off[1]) * v, off[2] + (ag - off[2]) * v, off[3] + (ab - off[3]) * v, 1)
+    end, function() Style.InkText(l, "OFF") end)
+end
+local function newRow(box, t, p, pitch, size)
+    local spent = tonumber(t.spent) or 0
+    local key = tostring(t.name) .. ":" .. tostring(Talents.group)
+    local seen = box.blastaRowsSeen
+    if not seen then
+        box.blastaRowsSeen = { key = key, spent = spent }
+        return
+    end
+    local before, same = seen.spent, seen.key == key
+    seen.key, seen.spent = key, spent
+    if not (same and spent > before and Motion and Motion.On and Motion.On()) then return end
+    -- The highest row this change opened (one step opens one row).
+    local row
+    for r = 1, t.rows - 1 do
+        local need = r * PER_ROW
+        if need > before and need <= spent then row = r end
+    end
+    if not row then return end
+    rowLight(box, row, pitch, size)
+    if p.labels[row + 1] then labelPulse(p.labels[row + 1]) end
+end
+
 local function decorate(box, t, pitch, size)
     if not (box and t and type(t.rows) == "number" and type(pitch) == "number" and pitch > 0) then return end
     local p = parts(box)
+    if box.blastaTalentStyle then
+        for _, region in ipairs(p.bands) do region:Hide() end
+        for _, region in ipairs(p.lines) do region:Hide() end
+        p.sub:Hide(); p.mark:Hide()
+        for i = 1, t.rows do
+            local l = label(box, p, i)
+            l:ClearAllPoints()
+            l:SetPoint("CENTER", box, "TOPLEFT", 10, -((Talents.HEAD or 48) + (i - 1) * pitch + size / 2))
+            l:SetText(tostring((i - 1) * PER_ROW))
+            Style.InkText(l, "OFF"); l:Show()
+        end
+        for i = t.rows + 1, #p.labels do p.labels[i]:Hide() end
+        newRow(box, t, p, pitch, size)
+        return
+    end
+    box.blastaRowsSeen = nil
+    p.sub:Show()
     local spent = tonumber(t.spent) or 0
     local head = Talents.HEAD or 38
     local ar, ag, ab = Style.Accent()

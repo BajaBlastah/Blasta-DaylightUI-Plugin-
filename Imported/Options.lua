@@ -34,8 +34,10 @@ add("info", "Buffs", groupsOf(call(ns.PlayerAuraLayoutPage)))
 add("info", "Buffs", { call(ns.AuraIconCornersGroup) })
 add("info", "Damage meter corner", { call(ns.MeterCornerGroup) })
 add("info", "Buff reminders", groupsOf(call(ns.AuraReminderPage)))
+add("windows", "General", { ns.WindowCornerGroup })
 add("windows", "Group Finder", { ns.DungeonFinderGroup })
 add("windows", "Spellbook", { ns.SpellbookGroup })
+add("windows", "Talents", { ns.TalentStyleGroup })
 add("windows", "Character", { ns.CharacterPanelGroup })
 add("world", "World map", { ns.MapLevelsGroup })
 add("world", "Chat", { call(ns.ChatCornerGroup) })
@@ -120,6 +122,15 @@ end
 local overview = { label = "Blasta (DaylightUI Plugin)", items = {
     { type = "text", label = "Blasta adds settings and refinements to DaylightUI. It's a plugin by its own author, "
         .. "not part of DaylightUI: please send Blasta bugs to Blasta, not to the DaylightUI team." },
+    { type = "button", label = "Blasta tour", text = "Start the tour", noSearch = true,
+      desc = "Shows every area of Blasta with its most useful settings, page by page. Also /blasta tour.",
+      hidden = function() return ns.ShowTour == nil end,
+      func = function() if ns.ShowTour then ns.ShowTour() end end },
+    { type = "button", label = "What's new", noSearch = true,
+      text = function() return ns.Translate("Show what's new in %s"):format(ns.WhatsNewVersion or "") end,
+      desc = "Shows the pages about this Blasta version again: what's new, with previews and the new settings. Also /blasta new.",
+      hidden = function() return ns.ShowWhatsNew == nil end,
+      func = function() if ns.ShowWhatsNew then ns.ShowWhatsNew() end end },
     { type = "button", label = "Report a Blasta bug", text = "Bug report",
       desc = "Opens a window with everything a bug report needs, ready to copy.",
       func = function() if ns.Report and ns.Report.Show then ns.Report.Show() end end },
@@ -152,14 +163,14 @@ local function jump(key, fallback)
     end
 end
 local NEWS = {
-    { "Compact equipment tooltips and improved comparisons", "blastaStyle", "tooltips" },
-    { "Make room for loot", "blastaLootSpace", "world" },
-    { "Loot item icon border", "blastaLootIconBorder", "world" },
-    { "Bag font sizes and category selling in DaylightUI's Bags settings" },
+    { "Raid marker ring on the target's portrait", "target.blastaMarkerRing", "units" },
+    { "Coin colors in the loot feed, in equal shares", "blastaLoot.coinColor", "world" },
+    { "Bag text sizes at the bank and the bank and alts window too" },
 }
-ns.German["Compact equipment tooltips and improved comparisons"] = "Kompakte Ausrüstungstooltips und verbesserte Vergleiche"
-ns.German["Bag font sizes and category selling in DaylightUI's Bags settings"] =
-    "Schriftgrößen und Kategorienverkauf in DaylightUIs Tascheneinstellungen"
+ns.German["Raid marker ring on the target's portrait"] = "Markierungsring am Porträt des Ziels"
+ns.German["Coin colors in the loot feed, in equal shares"] = "Münzfarben im Beutefeed, zu gleichen Teilen"
+ns.German["Bag text sizes at the bank and the bank and alts window too"] =
+    "Schriftgrößen der Taschen auch an der Bank und im Fenster für Bank und Twinks"
 local version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version")
 local news = { label = "New in Blasta " .. tostring(version or ""), items = {} }
 if ns.German then ns.German[news.label] = "Neu in Blasta " .. tostring(version or "") end
@@ -175,6 +186,9 @@ for _, entry in ipairs(NEWS) do
 end
 start.groups = { overview, news, areas }
 start.desc = "Everything Blasta adds, in one place."
+
+-- The tour's rows, found by their English labels before the menu is translated.
+if ns.PrepareTour then pcall(ns.PrepareTour, pages, samples) end
 
 -- A help line on each tab and buttons that open the windows a tab changes
 -- (SidePanel.lua), before the names are translated.

@@ -5,7 +5,7 @@
 -- the bar's fill, clipped to it like DaylightUI's own hit flash.
 -- Whether a cast can be interrupted may be secret; it only goes to
 -- SetAlphaFromBoolean, never compared in Lua.
-local ADDON, extras = ...
+local _, extras = ...
 local DUI = DaylightUI
 local mod = DUI:GetModule("Nameplates")
 local ns = mod and mod.ns

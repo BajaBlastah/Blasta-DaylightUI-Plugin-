@@ -598,7 +598,67 @@ local function hideIconArt(state, region)
     local alpha = plain(region:GetAlpha())
     if type(alpha) ~= "number" then return end
     if state.art[region] == nil then state.art[region] = alpha end
+    state.artHooks = state.artHooks or setmetatable({}, { __mode = "k" })
+    if not state.artHooks[region] then
+        state.artHooks[region] = true
+        -- The game and other skins can restore these layers after row Init.
+        -- Keep them quiet while our border owns the icon, without a polling loop.
+        hooksecurefunc(region, "SetAlpha", function(art, value)
+            value = plain(value)
+            if state.hidden and type(value) == "number" and value > 0
+                and DUI:Get(ADDON, borderKey) == "square" then
+                state.art[art] = value
+                art:SetAlpha(0)
+            end
+        end)
+    end
     if alpha ~= 0 then region:SetAlpha(0) end
+end
+
+local outlines = setmetatable({}, { __mode = "k" })
+-- Axis-aligned pixel textures avoid the soft corners and fractional endpoint
+-- rasterization of four Line objects on scaled/recycled loot rows.
+local function lootOutline(frame)
+    local edges = {}
+    for i = 1, 4 do
+        local t = frame:CreateTexture(nil, "OVERLAY", nil, 7)
+        t:SetColorTexture(1, 1, 1, 1)
+        if t.SetSnapToPixelGrid then t:SetSnapToPixelGrid(true) end
+        if t.SetTexelSnappingBias then t:SetTexelSnappingBias(0) end
+        edges[i] = t
+    end
+    local lastShown, lastColor
+    local function paint(_, shown, color)
+        lastShown, lastColor = shown, color
+        local px = DUI.Pixel.Px(frame, 1)
+        for i, t in ipairs(edges) do
+            t:ClearAllPoints()
+            if i <= 2 then
+                local side = i == 1 and "TOP" or "BOTTOM"
+                t:SetPoint(side .. "LEFT", frame, side .. "LEFT", 0, 0)
+                t:SetPoint(side .. "RIGHT", frame, side .. "RIGHT", 0, 0)
+                t:SetHeight(px)
+            else
+                local side = i == 3 and "LEFT" or "RIGHT"
+                t:SetPoint("TOP" .. side, frame, "TOP" .. side, 0, -px)
+                t:SetPoint("BOTTOM" .. side, frame, "BOTTOM" .. side, 0, px)
+                t:SetWidth(px)
+            end
+            t:SetVertexColor(color and color.r or 1, color and color.g or 1, color and color.b or 1, 1)
+            t:SetShown(shown)
+        end
+    end
+    -- One pixel is worked out from the frame's scale at paint time. The skin
+    -- shrinks the icon (37 to 30 px) and the window is scaled after the row is
+    -- first styled, so the lines are drawn again whenever the icon's size
+    -- changes. Otherwise they kept the old thickness and jumped between 0, 1
+    -- and 2 screen pixels.
+    local function repaint()
+        if lastShown ~= nil then paint(nil, lastShown, lastColor) end
+    end
+    frame:HookScript("OnSizeChanged", repaint)
+    outlines[frame] = repaint
+    return paint
 end
 
 local function isIconBorder(region)
@@ -629,19 +689,52 @@ local function hideSlotFrame(state, frame, kit)
     end
 end
 
-local function styleRow(row)
+local styleRow
+-- The skin often builds or rebuilds a row's border frame after the game's
+-- Init or OnShow, in the same frame. A new frame starts at full alpha, so a
+-- pass that ran first hid nothing there and the old border came back. One more
+-- pass on the next frame catches it; only hooks queue it, never styleRow.
+local function styleSoon(row)
+    local state = borders[row.Item]
+    if not state or state.queued then return end
+    state.queued = true
+    C_Timer.After(0, function()
+        state.queued = nil
+        if row.Item:IsVisible() then DUI.SafeCall(styleRow, row) end
+    end)
+end
+-- A shell made or re-optioned on a loot button (or on one of its children)
+-- after our pass: style that row again.
+if Style.Shell then
+    hooksecurefunc(Style, "Shell", function(frame)
+        local state = borders[frame]
+        if not state and frame and frame.GetParent then
+            local parent = frame:GetParent()
+            state = parent and borders[parent]
+        end
+        -- Now, before this frame is drawn: queued for the next frame only, the
+        -- new outline showed for one frame. Next frame once more as well.
+        if state and state.row and DUI:Get(ADDON, borderKey) == "square" then
+            DUI.SafeCall(styleRow, state.row)
+            styleSoon(state.row)
+        end
+    end)
+end
+
+function styleRow(row)
     local btn = row.Item
     if not (btn and btn.HookScript and row.GetSlotIndex) then return end
     local state = borders[btn]
     if not state then
-        state = {}
+        state = { row = row }
         borders[btn] = state
         btn:HookScript("OnMouseDown", function()
             if active then lastSlot = plain(row:GetSlotIndex()) end
         end)
+        btn:HookScript("OnShow", function() DUI.SafeCall(styleRow, row); styleSoon(row) end)
         -- Recycled rows can restore their original art without a list relayout.
         if type(row.Init) == "function" then
-            hooksecurefunc(row, "Init", function(current) DUI.SafeCall(styleRow, current) end)
+            hooksecurefunc(row, "Init", function(current) DUI.SafeCall(styleRow, current); styleSoon(current) end)
         end
     end
     local square = DUI:Get(ADDON, borderKey) == "square"
@@ -649,10 +742,10 @@ local function styleRow(row)
     if square then
         if not state.lines then
             local overlay = CreateFrame("Frame", nil, btn)
-            overlay:SetAllPoints(btn)
+            overlay:SetAllPoints(btn.icon or btn.Icon or btn)
             overlay:EnableMouse(false)
             state.overlay = overlay
-            state.lines = extras.IconOutline(overlay)
+            state.lines = lootOutline(overlay)
         end
         local slot = plain(row:GetSlotIndex())
         local quality, quest
@@ -662,10 +755,13 @@ local function styleRow(row)
             quest = plain(isQuestItem) == true or type(plain(questID)) == "number" and questID > 0
         end
         local level, strata = btn:GetFrameLevel() + 6, btn:GetFrameStrata()
+        state.overlay:ClearAllPoints()
+        state.overlay:SetAllPoints(btn.icon or btn.Icon or btn)
         if state.overlay:GetFrameLevel() ~= level then state.overlay:SetFrameLevel(level) end
         if state.overlay:GetFrameStrata() ~= strata then state.overlay:SetFrameStrata(strata) end
-        state.overlay:Show()
-        state.lines(nil, true, ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality])
+        local hasQuality = type(quality) == "number"
+        state.overlay:SetShown(hasQuality)
+        state.lines(nil, hasQuality, ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality])
         state.art = state.art or {}
         state.hidden = true
         local icon = btn.icon or btn.Icon
@@ -687,12 +783,40 @@ local function styleRow(row)
             if region ~= icon and isIconBorder(region) then hideIconArt(state, region) end
         end
     else
+        state.hidden = nil -- Allow the restoration through our SetAlpha hooks.
         for art, alpha in pairs(state.art) do art:SetAlpha(alpha) end
         state.lines(nil, false)
         state.overlay:Hide()
         state.hidden, state.art = nil, nil
     end
 end
+
+-- DaylightUI repaints its quality outline on an item button (Kit.SlotQuality)
+-- whenever the game changes the item, and right after building it for a new
+-- row. Style that loot row in the same moment, so DaylightUI's round outline
+-- never gets a frame on screen. A row not seen yet is found by its button.
+local function quietNow(btn)
+    if type(btn) ~= "table" or DUI:Get(ADDON, borderKey) ~= "square" then return end
+    local state = borders[btn]
+    local row = state and state.row
+    if not row and btn.GetParent then
+        local parent = btn:GetParent()
+        if type(parent) == "table" and parent.Item == btn and parent.GetSlotIndex then row = parent end
+    end
+    if row then DUI.SafeCall(styleRow, row) end
+end
+local kitHooked
+local function hookKit()
+    local kit = skinKit()
+    if kitHooked or not (kit and kit.SlotQuality) then return end
+    kitHooked = true
+    hooksecurefunc(kit, "SlotQuality", quietNow)
+end
+hookKit()
+DUI.On("Login", hookKit)
+DUI.On("StyleChanged", function()
+    for _, repaint in pairs(outlines) do repaint() end
+end)
 
 local watched
 local function watch()
@@ -703,7 +827,7 @@ local function watch()
         watched = box
         local kit = skinKit()
         if kit and kit.EachRow then
-            kit.EachRow(box, styleRow, "blastaLootIcons")
+            kit.EachRow(box, function(row) styleRow(row); styleSoon(row) end, "blastaLootIcons")
         elseif box.ForEachFrame and (not box.GetView or box:GetView()) then
             box:ForEachFrame(styleRow)
         end
@@ -761,6 +885,7 @@ DUI.RegisterEvent("UI_ERROR_MESSAGE", function(_, code, message)
     end
 end)
 DUI.RegisterEvent("GET_ITEM_INFO_RECEIVED", function(_, id, ok)
+    if active then queueStyle() end
     id = plain(id)
     if id and waitingItems[id] then
         waitingItems[id] = nil
